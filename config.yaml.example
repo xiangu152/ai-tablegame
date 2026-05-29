@@ -1,0 +1,16 @@
+# AI Werewolf Game - 配置文件
+# 复制此文件到 ~/.werewolf/config.yaml 并修改
+
+api:
+  base_url: https://api.openai.com/v1   # OpenAI-compatible API 地址
+  api_key: sk-your-api-key-here         # API 密钥
+  model: gpt-4                          # 模型名称
+
+game:
+  num_games: 1          # 对局数量
+  temperature: 0.7      # AI 温度 (0-2, 越高越随机)
+  round_limit: 20       # 单局最大轮次数
+
+learning:
+  concurrency: 4                         # 并行 API 调用数
+  db_path: ~/.werewolf/game.db           # 数据库路径
