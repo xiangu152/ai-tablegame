@@ -19,6 +19,7 @@ from typing import Any, Callable, Awaitable
 from werewolf.config import GameConfig
 from werewolf.engine.state import (
     Camp,
+    GAME_MODES,
     GameState,
     Phase,
     PlayerState,
@@ -176,8 +177,9 @@ class GameOrchestrator:
             game_id = self._new_id()
 
         # ── Step 1: SETUP ──
+        role_config = GAME_MODES.get(self.config.game_mode, STANDARD_12P)
         state = GameState(game_id=game_id, players={})
-        setup_phase(state)
+        setup_phase(state, role_config)
         self._log_game_start(game_id)
         self._persist_players(state, game_id)
         logger.info("Game %s started — 12 players assigned roles", game_id)
@@ -243,6 +245,8 @@ class GameOrchestrator:
                 )
                 break
 
+            state.round_history.append(self._build_round_summary(state, round_id))
+
             logger.info(
                 "Game %s round %d complete — no winner yet, continuing",
                 game_id,
@@ -274,7 +278,7 @@ class GameOrchestrator:
             prompt_override="现在开始警长竞选",
         )
 
-        # Collect candidates — ask all alive players
+        # Collect candidates — every player gets a chance to speak
         candidates: list[str] = []
         alive = state.alive_players()
 
@@ -282,19 +286,20 @@ class GameOrchestrator:
             response = await self._call_player(
                 player.player_id, player.role, state, "campaign_speech",
             )
-            # Check for wolf self-destruct
             if response.action == "self_destruct" and player.role == Role.WEREWOLF:
                 wolf_self_destruct(state, player.player_id, during_election=True)
                 self._log_event(round_id, "wolf_self_destruct", player.player_id,
                                 {"during_election": True})
                 logger.info("Wolf %s self-destructed during election", player.player_id)
-                return  # skip to night
+                return
 
-            if response.action in ("run", "campaign", "竞选"):
+            # Accept as candidate if they produced speech content, regardless of action keyword
+            speech = response.dialogue or response.reasoning or ""
+            if speech.strip():
                 candidates.append(player.player_id)
                 self._log_dialogue(round_id, player.player_id,
                                    response.dialogue, response.reasoning)
-                logger.info("Candidate %s: %s", player.player_id, response.dialogue[:80])
+                logger.info("Candidate %s spoke: %s", player.player_id, speech[:80])
 
         if not candidates:
             logger.info("No sheriff candidates — election skipped")
@@ -422,7 +427,8 @@ class GameOrchestrator:
                 )
                 logger.info("Wolf %s suggested kill target: %s", wolf_id, target)
 
-        # Determine kill target: majority (>= 3 of 4 agree)
+        # Determine kill target: majority vote, else random, else fallback
+        kill_target = None
         if suggestions:
             best_target = None
             best_count = 0
@@ -433,19 +439,25 @@ class GameOrchestrator:
                     best_count = len(wolf_ids)
                     best_target = target
 
-            if best_count >= 3:
+            majority_threshold = len(wolves) // 2 + 1
+            if best_count >= majority_threshold:
                 kill_target = best_target
-                logger.info(
-                    "Werewolf majority kill (%d/4): %s", best_count, kill_target
-                )
+                logger.info("Werewolf majority kill (%d/%d): %s", best_count, len(wolves), kill_target)
             else:
-                # No majority — random from suggestions
                 kill_target = random.choice(all_suggestions)
-                logger.info(
-                    "Werewolf random kill (no majority): %s", kill_target
-                )
+                logger.info("Werewolf random kill (no majority): %s", kill_target)
 
-            night_werewolf_phase(state, kill_target)
+        if kill_target is None:
+            targets = [p for p in state.alive_players() if p.camp != Camp.WEREWOLF]
+            if targets:
+                kill_target = random.choice(targets).player_id
+                logger.info("Werewolf fallback kill (random non-wolf): %s", kill_target)
+
+        self._log_event(
+            round_id, "night_kill_target", "system",
+            {"target": kill_target, "suggestion_count": len(suggestions)},
+        )
+        night_werewolf_phase(state, kill_target)
 
     async def _run_night_seer(
         self, state: GameState, round_id: str
@@ -465,16 +477,17 @@ class GameOrchestrator:
             seer.player_id, seer.role, state, "night_check",
         )
         target = response.target
-        if target and target in state.players and state.players[target].is_alive:
-            camp = state.players[target].camp
-            night_seer_phase(state, target, camp)
-            self._log_event(
-                round_id, "night_check", seer.player_id,
-                {"target": target, "result": camp.value},
-            )
-            logger.info("Seer checked %s -> %s", target, camp.value)
-        else:
-            night_seer_phase(state, "", Camp.GOOD)  # no-op
+        if not (target and target in state.players and state.players[target].is_alive):
+            alive_others = [p for p in state.alive_players() if p.player_id != seer.player_id]
+            target = random.choice(alive_others).player_id if alive_others else ""
+            logger.info("Seer fallback check target: %s", target)
+        camp = state.players[target].camp
+        night_seer_phase(state, target, camp)
+        self._log_event(
+            round_id, "night_check", seer.player_id,
+            {"target": target, "result": camp.value},
+        )
+        logger.info("Seer checked %s -> %s", target, camp.value)
 
     async def _run_night_witch(
         self, state: GameState, round_id: str
@@ -606,11 +619,8 @@ class GameOrchestrator:
     async def _run_day_discussion(
         self, state: GameState, round_id: str
     ) -> None:
-        """Run the day discussion phase with ordered speeches."""
+        """Run the day discussion phase with sequential debate."""
         state.phase = Phase.DAY_DISCUSSION
-
-        # Check for wolf self-destruct (skip discussion)
-        # self-destruct during day is handled via action_type="day_speech"
 
         speaking_order = day_discussion_phase(state)
         if not speaking_order:
@@ -618,34 +628,41 @@ class GameOrchestrator:
 
         await self._narrate(
             Phase.DAY_DISCUSSION, state, round_id,
-            prompt_override="现在开始发言环节",
+            prompt_override="现在开始发言环节，请每位玩家根据之前发言进行辩论",
         )
+
+        previous_speeches: list[str] = []
 
         for player_id in speaking_order:
             player = state.players.get(player_id)
             if not player or not player.is_alive:
                 continue
 
+            debate_context = "\n".join(previous_speeches) if previous_speeches else ""
+
             response = await self._call_player(
                 player.player_id, player.role, state, "day_speech",
+                debate_context=debate_context,
             )
 
-            # Check for wolf self-destruct during discussion
             if response.action == "self_destruct" and player.role == Role.WEREWOLF:
                 wolf_self_destruct(state, player.player_id, during_election=False)
                 self._log_event(
                     round_id, "wolf_self_destruct", player.player_id,
                     {"during_election": False},
                 )
-                logger.info(
-                    "Wolf %s self-destructed during discussion", player.player_id,
-                )
-                return  # skip to night
+                logger.info("Wolf %s self-destructed during discussion", player.player_id)
+                return
+
+            speech_text = response.dialogue or response.reasoning or ""
+            previous_speeches.append(
+                f"{player.seat_number}号玩家: {speech_text}"
+            )
 
             self._log_dialogue(
                 round_id, player.player_id, response.dialogue, response.reasoning,
             )
-            logger.info("Speech by %s: %s", player_id, response.dialogue[:80])
+            logger.info("Speech by %s: %s", player_id, speech_text[:80])
 
         await self._narrate(
             Phase.DAY_DISCUSSION, state, round_id,
@@ -732,6 +749,11 @@ class GameOrchestrator:
                 player.player_id, player.role, state, "vote",
             )
             target = response.target
+            if not (target and target in state.players and state.players[target].is_alive):
+                # Fallback: vote for a random alive player (excluding self)
+                others = [p for p in alive if p.player_id != player.player_id]
+                if others:
+                    target = random.choice(others).player_id
             if target and target in state.players and state.players[target].is_alive:
                 votes[player.player_id] = target
                 self._log_vote(round_id, player.player_id, target, "elimination")
@@ -847,6 +869,7 @@ class GameOrchestrator:
         state: GameState,
         action_type: str,
         prompt_override: str | None = None,
+        debate_context: str = "",
     ) -> AgentResponse:
         """Call the player agent, returning a default response if agent is None."""
         agent = self.player_agent
@@ -855,18 +878,18 @@ class GameOrchestrator:
         try:
             import inspect
             sig = inspect.signature(agent)
+            kwargs: dict = {"player_id": player_id, "role": role, "game_state": state, "action_type": action_type}
             if len(sig.parameters) >= 5:
-                return await agent(player_id, role, state, action_type, prompt_override)
-            return await agent(player_id, role, state, action_type)
+                kwargs["prompt_override"] = prompt_override
+            if "debate_context" in sig.parameters:
+                kwargs["debate_context"] = debate_context
+            return await agent(**kwargs)
         except Exception as e:
             logger.error(
                 "Player agent call failed for %s (action=%s): %s",
                 player_id, action_type, e,
             )
-            return AgentResponse(
-                action="abstain",
-                reasoning=f"agent error: {e}",
-            )
+            return AgentResponse(action="abstain", reasoning=f"agent error: {e}")
 
     async def _narrate(
         self,
@@ -911,11 +934,55 @@ class GameOrchestrator:
                 game_id, pid, player.role.value, player.seat_number,
             )
 
+    def _build_round_summary(self, state: GameState, round_id: str) -> str:
+        """Build a public round summary for all players to see next round."""
+        parts = [f"=== 第{state.round_number}轮 ==="]
+
+        # Night deaths
+        if state.eliminated_tonight:
+            deaths = [f"{state.players[pid].seat_number}号玩家" for pid in state.eliminated_tonight if pid in state.players]
+            parts.append(f"昨夜死亡: {', '.join(deaths)}")
+        else:
+            parts.append("昨夜是平安夜，无人死亡")
+
+        # Player speeches (public)
+        dialogues = self.repo.get_dialogues(round_id)
+        if dialogues:
+            speech_lines = []
+            for d in dialogues:
+                if d.content:
+                    seat = state.players[d.player_id].seat_number if d.player_id in state.players else d.player_id
+                    speech_lines.append(f"  {seat}号: {d.content[:120]}")
+            if speech_lines:
+                parts.append("发言摘要:\n" + "\n".join(speech_lines))
+
+        # Today's elimination
+        if state.eliminated_today:
+            for pid in state.eliminated_today:
+                if pid in state.players:
+                    parts.append(f"今日放逐: {state.players[pid].seat_number}号玩家")
+
+        # Votes
+        if state.current_votes:
+            vote_tally: dict[str, int] = {}
+            for target in state.current_votes.values():
+                vote_tally[target] = vote_tally.get(target, 0) + 1
+            vote_lines = [f"  {state.players[t].seat_number}号: {c}票" for t, c in sorted(vote_tally.items(), key=lambda x: -x[1]) if t in state.players]
+            if vote_lines:
+                parts.append("投票:\n" + "\n".join(vote_lines))
+
+        # Sheriff
+        if state.sheriff_id and state.sheriff_id in state.players:
+            parts.append(f"警长: {state.players[state.sheriff_id].seat_number}号")
+
+        parts.append(f"存活: {state.alive_count()}人")
+        return "\n".join(parts)
+
     def _log_game_start(self, game_id: str) -> None:
         """Log the game start record."""
         self.repo.create_game(GameRecord(
             id=game_id,
-            mode=self.config.game_mode,
+            mode="standard",
             winner="",
             total_rounds=0,
             started_at=datetime.now().isoformat(),  # type: ignore[arg-type]

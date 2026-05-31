@@ -1,9 +1,4 @@
-"""Player agent for AI Werewolf game.
-
-Each PlayerAgent instance represents one player with a specific role.
-Uses Jinja2 templates for prompt construction and delegates to the base
-LLM agent for decision-making.
-"""
+"""Player agent - all agents see full public info, debate context, and tool-access to private data."""
 
 from __future__ import annotations
 
@@ -15,76 +10,50 @@ import jinja2
 
 from werewolf.agents.base import AgentResponse, BaseAgent
 from werewolf.config import GameConfig
-from werewolf.engine.state import Camp, GameState, Phase, PlayerState, Role
+from werewolf.engine.state import Camp, GameState, Role
 
 logger = logging.getLogger(__name__)
 
-# ── Role display names ────────────────────────────────────────────
-
 ROLE_CHINESE: dict[Role, str] = {
-    Role.WEREWOLF: "狼人",
-    Role.SEER: "预言家",
-    Role.WITCH: "女巫",
-    Role.HUNTER: "猎人",
-    Role.GUARD: "守卫",
-    Role.VILLAGER: "平民",
+    Role.WEREWOLF: "狼人", Role.SEER: "预言家", Role.WITCH: "女巫",
+    Role.HUNTER: "猎人", Role.GUARD: "守卫", Role.VILLAGER: "平民",
 }
 
-# ── Role → template mapping ───────────────────────────────────────
-
 ROLE_TEMPLATE: dict[Role, str] = {
-    Role.WEREWOLF: "werewolf.j2",
-    Role.SEER: "seer.j2",
-    Role.WITCH: "witch.j2",
-    Role.HUNTER: "hunter.j2",
-    Role.GUARD: "guard.j2",
-    Role.VILLAGER: "villager.j2",
+    Role.WEREWOLF: "werewolf.j2", Role.SEER: "seer.j2",
+    Role.WITCH: "witch.j2", Role.HUNTER: "hunter.j2",
+    Role.GUARD: "guard.j2", Role.VILLAGER: "villager.j2",
 }
 
 TEMPLATES_DIR = Path(__file__).parent / "prompts"
 
-# Action-type specific user messages
 _ACTION_MESSAGES: dict[str, str] = {
     "night_kill": "请选择今晚的猎杀目标。",
     "night_check": "请选择今晚的查验目标。",
     "night_witch": "请决定是否使用解药或毒药。",
     "night_guard": "请选择今晚的守护目标。",
-    "campaign_speech": "请发表你的警长竞选演讲，决定是否参选。",
-    "day_speech": "现在轮到你发言，请说出你的分析和判断。",
-    "vote": "请投出你的一票，选择要放逐的玩家。",
-    "death_shot": "你即将死亡，请选择要开枪带走的玩家。",
-    "sheriff_transfer": "你即将死亡，请选择将警徽移交给哪位玩家（或输入 null 撕毁警徽）。",
+    "campaign_speech": "请发表你的警长竞选演讲。",
+    "day_speech": "请发表你的发言（辩论模式：你可以回应之前发言的玩家）。",
+    "vote": "请投出你的一票。",
+    "death_shot": "请选择要开枪带走的玩家。",
+    "sheriff_transfer": "请选择将警徽移交给哪位玩家。",
 }
 
-# Fallback actions when JSON parsing fails
 _ACTION_FALLBACKS: dict[str, str] = {
-    "night_kill": "random",
-    "night_check": "random",
-    "night_witch": "pass",
-    "night_guard": "random",
-    "campaign_speech": "abstain",
-    "day_speech": "abstain",
-    "vote": "random",
-    "death_shot": "pass",
-    "sheriff_transfer": "pass",
+    "night_kill": "random", "night_check": "random",
+    "night_witch": "pass", "night_guard": "random",
+    "campaign_speech": "abstain", "day_speech": "abstain",
+    "vote": "random", "death_shot": "pass", "sheriff_transfer": "pass",
 }
 
 
 class PlayerAgent(BaseAgent):
-    """AI agent that plays a specific role in the Werewolf game.
-
-    Uses role-specific Jinja2 templates to build system prompts, then
-    delegates to the LLM for decision-making.
-
-    Implements the callable protocol expected by GameOrchestrator:
-        async def __call__(self, player_id, role, game_state, action_type) -> AgentResponse
-    """
+    """AI agent that plays a role with full information access via tools."""
 
     def __init__(self, config: GameConfig, agent_name: str = "player") -> None:
         super().__init__(config, agent_name)
         self._env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(str(TEMPLATES_DIR)),
-            autoescape=False,
+            loader=jinja2.FileSystemLoader(str(TEMPLATES_DIR)), autoescape=False,
         )
         self._template_cache: dict[str, jinja2.Template] = {}
 
@@ -95,178 +64,168 @@ class PlayerAgent(BaseAgent):
         game_state: GameState,
         action_type: str,
         prompt_override: str | None = None,
+        debate_context: str = "",
     ) -> AgentResponse:
-        """Make a player decision for the given action type.
-
-        Args:
-            player_id: ID of the player making the decision (e.g. "player_1").
-            role: The player's role.
-            game_state: Current game state.
-            action_type: One of "night_kill", "night_check", "night_witch",
-                         "night_guard", "campaign_speech", "day_speech",
-                         "vote", "death_shot", "sheriff_transfer".
-            prompt_override: If provided, overrides the standard user message.
-
-        Returns:
-            AgentResponse with the player's decision.
-        """
         template = self._get_template(role)
         context = self._build_context(player_id, role, game_state, action_type)
-
         system_prompt = template.render(**context)
-        user_message = prompt_override or _ACTION_MESSAGES.get(
-            action_type, f"请执行 {action_type} 行动。"
-        )
+
+        user_message = prompt_override or _ACTION_MESSAGES.get(action_type, f"请执行 {action_type}。")
+        if debate_context:
+            user_message = f"## 本轮已有发言（请辩论式回应）\n{debate_context}\n\n---\n{user_message}"
+
         fallback = _ACTION_FALLBACKS.get(action_type, "abstain")
+        tool_context = self._build_tool_context(player_id, role, game_state)
 
-        return await self.call(
-            system_prompt=system_prompt,
-            user_message=user_message,
-            default_action=fallback,
-        )
+        # Use streaming for speech actions
+        if action_type in ("campaign_speech", "day_speech"):
+            print(f"\n  {context.get('player_id', '?')}号: ", end="", flush=True)
+            raw = await self.call_stream(system_prompt, user_message, tool_context)
+            result = AgentResponse(action="speak", dialogue=raw.strip(), raw_response=raw)
+        else:
+            result = await self.call(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                default_action=fallback,
+                tool_context=tool_context,
+            )
 
-    # ── Context builders ───────────────────────────────────────────
+        # Speech actions: use raw text as dialogue if JSON parsing failed
+        if action_type in ("campaign_speech", "day_speech") and not result.dialogue:
+            if result.raw_response and result.raw_response != result.reasoning:
+                result.dialogue = result.raw_response[:500]
+                result.action = "speak"
+
+        return result
+
+    # ── Combined context (public + private for template rendering) ──
 
     def _build_context(
-        self,
-        player_id: str,
-        role: Role,
-        state: GameState,
-        action_type: str,
+        self, player_id: str, role: Role, state: GameState, action_type: str,
     ) -> dict[str, Any]:
-        """Build the Jinja2 template context for the player's role and action."""
+        """Build template context with full public info + role-specific private info."""
         player = state.players.get(player_id)
-        seat_number = str(player.seat_number) if player else player_id
-
-        alive = sorted(
-            state.alive_players(), key=lambda p: p.seat_number
-        )
-        alive_ids = [str(p.seat_number) for p in alive]
-
-        is_night = action_type in (
-            "night_kill",
-            "night_check",
-            "night_witch",
-            "night_guard",
-        )
+        seat = str(player.seat_number) if player else player_id
+        alive = sorted(state.alive_players(), key=lambda p: p.seat_number)
+        dead = [p for p in state.players.values() if not p.is_alive]
+        is_night = action_type in ("night_kill", "night_check", "night_witch", "night_guard")
 
         context: dict[str, Any] = {
             "role_name": self._role_name(role),
-            "player_id": seat_number,
+            "player_id": seat,
             "game_round": state.round_number,
-            "alive_players": alive_ids,
-            "memories": None,
+            "alive_players": [f"{p.seat_number}号({ROLE_CHINESE.get(p.role, '?')})" for p in alive],
+            "alive_count": len(alive),
+            "dead_players": [f"{p.seat_number}号({ROLE_CHINESE.get(p.role, '?')})" for p in dead],
             "game_history": self._build_game_history(state),
+            "sheriff": self._sheriff_display(state),
             "phase": "night" if is_night else "day",
+            "memories": None,
         }
 
-        # ── Role-specific visibility ──
+        # Role-specific private info (also available via tools)
         if role == Role.WEREWOLF:
             context["team"] = [
-                str(p.seat_number)
-                for p in state.alive_werewolves()
-                if p.player_id != player_id
+                str(p.seat_number) for p in state.alive_werewolves() if p.player_id != player_id
             ]
-
         elif role == Role.SEER:
             context["previous_checks"] = self._build_seer_checks(state)
-
         elif role == Role.WITCH:
             context["antidote_used"] = state.witch_antidote_used
             context["poison_used"] = state.witch_poison_used
             context["tonight_kill_target"] = self._get_witch_kill_info(state)
-
         elif role == Role.HUNTER:
             context["gun_active"] = True
-
         elif role == Role.GUARD:
             context["last_protected"] = self._get_guard_last_protect(state)
 
         return context
 
-    def _build_seer_checks(self, state: GameState) -> list[dict[str, str]]:
-        """Build seer's historical check results with seat numbers."""
-        checks: list[dict[str, str]] = []
-        for checked_id, camp in state.seer_checks.items():
-            target = state.players.get(checked_id)
-            if target is not None:
-                checks.append({
-                    "player_id": str(target.seat_number),
-                    "result": "werewolf" if camp == Camp.WEREWOLF else "good",
-                })
-        return checks
-
     def _get_witch_kill_info(self, state: GameState) -> str | None:
-        """Return tonight's kill target seat number for the witch, or None."""
-        if state.witch_antidote_used:
-            return None
-        if state.night_kill_target is None:
+        if state.witch_antidote_used or state.night_kill_target is None:
             return None
         target = state.players.get(state.night_kill_target)
-        if target is None:
-            return None
-        return str(target.seat_number)
+        return str(target.seat_number) if target else None
 
     def _get_guard_last_protect(self, state: GameState) -> str | None:
-        """Return the last protected player's seat number for the guard, or None."""
         if state.guard_last_protect is None:
             return None
         target = state.players.get(state.guard_last_protect)
-        if target is None:
-            return None
-        return str(target.seat_number)
+        return str(target.seat_number) if target else None
 
-    # ── History summarisation ──────────────────────────────────────
+    # ── Tool context (private info, accessible via get_my_private_info) ──
+
+    def _build_tool_context(self, player_id: str, role: Role, state: GameState) -> dict:
+        player = state.players.get(player_id)
+        seat = str(player.seat_number) if player else "?"
+
+        context: dict[str, Any] = {
+            "my_role": ROLE_CHINESE.get(role, "unknown"),
+            "my_seat": seat,
+            "teammates": [],
+            "previous_checks": [],
+            "antidote_used": state.witch_antidote_used,
+            "poison_used": state.witch_poison_used,
+            "gun_active": True,
+            "last_protected": None,
+        }
+
+        if role == Role.WEREWOLF:
+            context["teammates"] = [
+                str(p.seat_number) for p in state.alive_werewolves() if p.player_id != player_id
+            ]
+        if role == Role.SEER:
+            context["previous_checks"] = self._build_seer_checks(state)
+        if role == Role.GUARD and state.guard_last_protect:
+            target = state.players.get(state.guard_last_protect)
+            if target:
+                context["last_protected"] = str(target.seat_number)
+
+        # Full public info embedded in tool context for queries
+        context["alive_players"] = [
+            f"{p.seat_number}号" for p in sorted(state.alive_players(), key=lambda x: x.seat_number)
+        ]
+        context["dead_players"] = [
+            f"{p.seat_number}号" for p in state.players.values() if not p.is_alive
+        ]
+        context["game_history"] = self._build_game_history(state)
+        context["round_number"] = state.round_number
+        context["sheriff"] = self._sheriff_display(state)
+
+        return context
+
+    def _build_seer_checks(self, state: GameState) -> list[dict[str, str]]:
+        checks: list[dict[str, str]] = []
+        for checked_id, camp in state.seer_checks.items():
+            target = state.players.get(checked_id)
+            if target:
+                checks.append({
+                    "player_id": str(target.seat_number),
+                    "result": "狼人" if camp == Camp.WEREWOLF else "好人",
+                })
+        return checks
 
     def _build_game_history(self, state: GameState) -> str:
-        """Summarise recent public events for the template context."""
-        parts: list[str] = []
-
-        if state.eliminated_tonight:
-            deaths = [
-                self._seat_display(pid, state) for pid in state.eliminated_tonight
-            ]
-            parts.append(f"昨晚死亡: {', '.join(deaths)}")
-        if state.eliminated_today:
-            deaths = [
-                self._seat_display(pid, state) for pid in state.eliminated_today
-            ]
-            parts.append(f"今日被放逐: {', '.join(deaths)}")
-        if state.sheriff_id:
-            sheriff = state.players.get(state.sheriff_id)
-            if sheriff and sheriff.is_alive:
-                parts.append(f"当前警长: {sheriff.seat_number}号玩家")
-
-        return "\n".join(parts) if parts else "暂无重大事件"
+        if state.round_history:
+            return "\n\n".join(state.round_history)
+        return "游戏刚开始"
 
     @staticmethod
-    def _seat_display(player_id: str, state: GameState) -> str:
-        """Convert a player_id to a human-readable seat number string."""
-        player = state.players.get(player_id)
-        if player is not None:
-            return f"{player.seat_number}号玩家"
-        return player_id
-
-    # ── Template loading ────────────────────────────────────────────
+    def _sheriff_display(state: GameState) -> str | None:
+        if state.sheriff_id and state.sheriff_id in state.players:
+            p = state.players[state.sheriff_id]
+            return f"{p.seat_number}号玩家" if p.is_alive else f"原警长{p.seat_number}号(已死亡)"
+        return None
 
     def _get_template(self, role: Role) -> jinja2.Template:
-        """Load and cache the Jinja2 template for the given role."""
-        template_name = ROLE_TEMPLATE.get(role, "villager.j2")
-        if template_name not in self._template_cache:
-            self._template_cache[template_name] = self._env.get_template(
-                template_name
-            )
-        return self._template_cache[template_name]
-
-    # ── Static helpers ──────────────────────────────────────────────
+        name = ROLE_TEMPLATE.get(role, "villager.j2")
+        if name not in self._template_cache:
+            self._template_cache[name] = self._env.get_template(name)
+        return self._template_cache[name]
 
     @staticmethod
     def _role_name(role: Role) -> str:
-        """Return the Chinese display name for a role."""
         return ROLE_CHINESE.get(role, role.value)
 
 
-# Module-level sentinel for lazy import by GameOrchestrator.
-# Set to a configured PlayerAgent instance before use, or leave as None
-# (the orchestrator gracefully handles None by returning default responses).
 player_agent: PlayerAgent | None = None

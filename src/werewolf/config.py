@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Optional
 
 import yaml
@@ -13,24 +12,18 @@ import yaml
 DEFAULT_CONFIG_PATH = "config.yaml"
 
 
-def _expand(path: str) -> str:
-    return os.path.expanduser(path)
-
-
 @dataclass
 class GameConfig:
     base_url: str = ""
     api_key: str = ""
     model_name: str = ""
+    game_mode: str = "12p"
     num_games: int = 1
     temperature: float = 0.7
     concurrency_limit: int = 4
     round_limit: int = 20
-    db_path: str = "~/.werewolf/game.db"
+    db_path: str = ".werewolf/game.db"
     verbose: bool = False
-
-    def __post_init__(self) -> None:
-        self.db_path = _expand(self.db_path)
 
     def validate(self) -> list[str]:
         errors = []
@@ -50,9 +43,8 @@ class GameConfig:
 
 
 def _load_yaml(path: str) -> dict:
-    expanded = _expand(path)
-    if os.path.exists(expanded):
-        with open(expanded, "r") as f:
+    if os.path.exists(path):
+        with open(path, "r") as f:
             return yaml.safe_load(f) or {}
     return {}
 
@@ -62,6 +54,7 @@ def load_config(
     base_url: Optional[str] = None,
     api_key: Optional[str] = None,
     model: Optional[str] = None,
+    game_mode: Optional[str] = None,
     num_games: Optional[int] = None,
     db_path: Optional[str] = None,
     verbose: bool = False,
@@ -76,10 +69,11 @@ def load_config(
         base_url=base_url or api.get("base_url", ""),
         api_key=api_key or api.get("api_key", ""),
         model_name=model or api.get("model", ""),
+        game_mode=game_mode or game.get("mode", "12p"),
         num_games=num_games or game.get("num_games", 1),
         temperature=game.get("temperature", 0.7),
         round_limit=game.get("round_limit", 20),
         concurrency_limit=learning.get("concurrency", 4),
-        db_path=db_path or learning.get("db_path", "~/.werewolf/game.db"),
+        db_path=db_path or learning.get("db_path", ".werewolf/game.db"),
         verbose=verbose,
     )

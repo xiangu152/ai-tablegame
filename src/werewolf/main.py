@@ -20,6 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--base-url", help="API base URL (overrides config)")
     run_parser.add_argument("--api-key", help="API key (overrides config)")
     run_parser.add_argument("--model", help="Model name (overrides config)")
+    run_parser.add_argument("--game-mode", help="Game mode: 6p/7p/8p/9p/10p/11p/12p (default: 12p)")
     run_parser.add_argument("--num-games", type=int, help="Number of games")
     run_parser.add_argument("--db-path", help="Database path")
     run_parser.add_argument("--verbose", "-v", action="store_true", help="Show prompts and responses")
@@ -48,6 +49,7 @@ def cmd_run(args) -> int:
         base_url=args.base_url,
         api_key=args.api_key,
         model=args.model,
+        game_mode=args.game_mode,
         num_games=args.num_games,
         db_path=args.db_path,
         verbose=args.verbose,
@@ -73,9 +75,14 @@ def cmd_run(args) -> int:
     from werewolf.storage.db import init_db
     from werewolf.storage.repository import Repository
     from werewolf.engine.game import GameOrchestrator
+    from werewolf.agents.player import PlayerAgent
+    from werewolf.agents.judge import JudgeAgent
 
     init_db(config.db_path)
     repo = Repository(config.db_path)
+
+    player = PlayerAgent(config, "player")
+    judge = JudgeAgent(config, "judge")
 
     phase_labels: dict[str, str] = {
         "sheriff_election": "Sheriff Election - 警长竞选",
@@ -125,7 +132,7 @@ def cmd_run(args) -> int:
                 console.print(f"\n[bold cyan]=== Game {game_num}/{config.num_games} ===[/bold cyan]")
 
             start_time = time.time()
-            orchestrator = GameOrchestrator(config, repo, on_progress=_progress)
+            orchestrator = GameOrchestrator(config, repo, on_progress=_progress, player_agent=player, judge_agent=judge)
             final_state = asyncio.run(orchestrator.run_game(game_id))
 
             elapsed = time.time() - start_time

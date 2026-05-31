@@ -39,24 +39,25 @@ STANDARD_NIGHT_ORDER: list[Phase] = [
 
 # ── Setup ───────────────────────────────────────────────────────
 
-def setup_phase(state: GameState) -> GameState:
-    """Randomly assign roles to 12 player slots and initialise player states.
+def setup_phase(state: GameState, role_config: dict[Role, int] | None = None) -> GameState:
+    """Randomly assign roles from role_config and initialise player states.
 
-    Creates 12 PlayerState objects for seats 1-12 using the STANDARD_12P
-    role distribution, then stores them in state.players.
+    If role_config is None, defaults to STANDARD_12P.
     """
-    # Flatten role list from STANDARD_12P counts
+    if role_config is None:
+        role_config = STANDARD_12P
+
     role_pool: list[tuple[Role, Camp]] = []
-    for role, count in STANDARD_12P.items():
+    for role, count in role_config.items():
         camp = get_camp(role)
         role_pool.extend([(role, camp)] * count)
 
-    assert len(role_pool) == 12, f"STANDARD_12P must contain exactly 12 roles, got {len(role_pool)}"
+    total = len(role_pool)
 
     random.shuffle(role_pool)
 
     players: dict[str, PlayerState] = {}
-    for seat in range(1, 13):
+    for seat in range(1, total + 1):
         role, camp = role_pool[seat - 1]
         player_id = _make_player_id(seat)
         players[player_id] = PlayerState(
@@ -68,11 +69,7 @@ def setup_phase(state: GameState) -> GameState:
 
     state.players = players
     state.phase = Phase.SETUP
-    logger.info(
-        "Setup complete: %d players assigned, roles=%s",
-        len(players),
-        {p.player_id: p.role.value for p in players.values()},
-    )
+    logger.info("Setup complete: %d players assigned", total)
     return state
 
 

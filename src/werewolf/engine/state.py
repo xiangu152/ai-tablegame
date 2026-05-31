@@ -79,6 +79,7 @@ class GameState:
     vote_round: int = 0  # re-vote tracking (max 2)
     eliminated_tonight: list[str] = field(default_factory=list)
     eliminated_today: list[str] = field(default_factory=list)
+    round_history: list[str] = field(default_factory=list)
 
     # ---- Queries ----
 
@@ -109,14 +110,58 @@ class GameState:
 
 # ── Role configuration ──────────────────────────────────────────
 
-STANDARD_12P: dict[Role, int] = {
-    Role.WEREWOLF: 4,
-    Role.SEER: 1,
-    Role.WITCH: 1,
-    Role.HUNTER: 1,
-    Role.GUARD: 1,
-    Role.VILLAGER: 4,
+# 游戏模式: {玩家数: 角色配置}
+GAME_MODES: dict[str, dict[Role, int]] = {
+    "6p": {
+        Role.WEREWOLF: 2,
+        Role.SEER: 1,
+        Role.WITCH: 1,
+        Role.VILLAGER: 2,
+    },
+    "7p": {
+        Role.WEREWOLF: 2,
+        Role.SEER: 1,
+        Role.WITCH: 1,
+        Role.VILLAGER: 3,
+    },
+    "8p": {
+        Role.WEREWOLF: 3,
+        Role.SEER: 1,
+        Role.WITCH: 1,
+        Role.VILLAGER: 3,
+    },
+    "9p": {
+        Role.WEREWOLF: 3,
+        Role.SEER: 1,
+        Role.WITCH: 1,
+        Role.HUNTER: 1,
+        Role.VILLAGER: 3,
+    },
+    "10p": {
+        Role.WEREWOLF: 3,
+        Role.SEER: 1,
+        Role.WITCH: 1,
+        Role.HUNTER: 1,
+        Role.VILLAGER: 4,
+    },
+    "11p": {
+        Role.WEREWOLF: 4,
+        Role.SEER: 1,
+        Role.WITCH: 1,
+        Role.HUNTER: 1,
+        Role.VILLAGER: 4,
+    },
+    "12p": {
+        Role.WEREWOLF: 4,
+        Role.SEER: 1,
+        Role.WITCH: 1,
+        Role.HUNTER: 1,
+        Role.GUARD: 1,
+        Role.VILLAGER: 4,
+    },
 }
+
+STANDARD_12P = GAME_MODES["12p"]
 
 
 def get_camp(role: Role) -> Camp:

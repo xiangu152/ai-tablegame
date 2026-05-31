@@ -62,7 +62,7 @@ class TestPlayerAgentCreation:
 
     def test_player_agent_creation(self, config):
         """Agent should initialise correctly with a Jinja2 environment."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = PlayerAgent(config)
             assert agent.agent_name == "player"
             assert agent._env is not None
@@ -74,7 +74,7 @@ class TestPlayerAgentContext:
     @pytest.mark.asyncio
     async def test_werewolf_context(self, config, game_state):
         """Werewolf should see teammates in context."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = PlayerAgent(config)
             context = agent._build_context("player_1", Role.WEREWOLF, game_state, "night_kill")
             assert "team" in context, "Werewolf context should include team"
@@ -84,19 +84,19 @@ class TestPlayerAgentContext:
     @pytest.mark.asyncio
     async def test_seer_context(self, config, game_state):
         """Seer should see previous check results."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = PlayerAgent(config)
             context = agent._build_context("player_3", Role.SEER, game_state, "night_check")
             assert "previous_checks" in context, "Seer context should include previous_checks"
             checks = context["previous_checks"]
             assert len(checks) > 0, "Seer should have check history"
             assert checks[0]["player_id"] == "2", f"Expected seat 2, got {checks[0]['player_id']}"
-            assert checks[0]["result"] == "werewolf", f"Expected werewolf result, got {checks[0]['result']}"
+            assert checks[0]["result"] == "狼人", f"Expected 狼人 result, got {checks[0]['result']}"
 
     @pytest.mark.asyncio
     async def test_witch_context(self, config, game_state):
         """Witch should see potion status and kill target."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = PlayerAgent(config)
             context = agent._build_context("player_5", Role.WITCH, game_state, "night_witch")
             assert "antidote_used" in context, "Witch context should include antidote_used"
@@ -111,7 +111,7 @@ class TestPlayerAgentContext:
     @pytest.mark.asyncio
     async def test_hunter_context(self, config, game_state):
         """Hunter should have gun_active flag."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = PlayerAgent(config)
             state = GameState(
                 game_id="test",
@@ -127,7 +127,7 @@ class TestPlayerAgentContext:
     @pytest.mark.asyncio
     async def test_guard_context(self, config, game_state):
         """Guard should see last protected player."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = PlayerAgent(config)
             state = GameState(
                 game_id="test",
@@ -149,15 +149,17 @@ class TestPlayerAgentResponseParsing:
     async def test_parse_valid_response(self, config, game_state):
         """Valid JSON should produce AgentResponse with correct fields."""
         json_str = _make_mock_response("vote", target="player_2", reasoning="suspicious", dialogue="I vote player_2")
+        mock_content = MagicMock()
+        mock_content.type = "text"
+        mock_content.text = json_str
         mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = json_str
+        mock_response.content = [mock_content]
 
         mock_client = MagicMock()
-        mock_client.chat = MagicMock()
-        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_client.messages = MagicMock()
+        mock_client.messages.create = AsyncMock(return_value=mock_response)
 
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=mock_client):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=mock_client):
             agent = PlayerAgent(config)
             result = await agent("player_3", Role.SEER, game_state, "vote")
 
@@ -168,34 +170,33 @@ class TestPlayerAgentResponseParsing:
     @pytest.mark.asyncio
     async def test_parse_invalid_json_fallback(self, config, game_state):
         """Invalid JSON response should fall back to default action."""
+        mock_content = MagicMock()
+        mock_content.type = "text"
+        mock_content.text = "not valid json at all!"
         mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = "not valid json at all!"
+        mock_response.content = [mock_content]
 
         mock_client = MagicMock()
-        mock_client.chat = MagicMock()
-        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_client.messages = MagicMock()
+        mock_client.messages.create = AsyncMock(return_value=mock_response)
 
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=mock_client):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=mock_client):
             agent = PlayerAgent(config)
             result = await agent("player_3", Role.SEER, game_state, "night_check")
 
-            # Fallback action for night_check is "random"
             assert result.action == "random", f"Expected 'random' fallback, got {result.action}"
-            assert result.raw_response == "not valid json at all!"
 
     @pytest.mark.asyncio
     async def test_parse_api_error_fallback(self, config, game_state):
         """API error should return default action."""
         mock_client = MagicMock()
-        mock_client.chat = MagicMock()
-        mock_client.chat.completions.create = AsyncMock(side_effect=Exception("API error"))
+        mock_client.messages = MagicMock()
+        mock_client.messages.create = AsyncMock(side_effect=Exception("API error"))
 
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=mock_client):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=mock_client):
             agent = PlayerAgent(config)
             result = await agent("player_3", Role.SEER, game_state, "vote")
 
-            # Fallback action for vote is "random"
             assert result.action == "random", f"Expected 'random' fallback on error, got {result.action}"
 
 

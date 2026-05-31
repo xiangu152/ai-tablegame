@@ -59,7 +59,7 @@ class TestJudgeAgentCreation:
 
     def test_judge_agent_creation(self, config):
         """Agent should initialise with a Jinja2 template."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             assert agent.agent_name == "judge"
             assert agent._template is not None
@@ -70,7 +70,7 @@ class TestMustAnnounce:
 
     def test_must_announce_has_phase_info(self, config, game_state):
         """Every phase should have basic phase/round/alive info."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             announcement = agent._build_must_announce(Phase.SHERIFF_ELECTION, game_state)
             assert "phase" in announcement
@@ -81,7 +81,7 @@ class TestMustAnnounce:
 
     def test_must_announce_day_death(self, config, game_state):
         """DAY_DEATH_ANNOUNCE phase should include deaths list."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             announcement = agent._build_must_announce(Phase.DAY_DEATH_ANNOUNCE, game_state)
             assert "deaths" in announcement
@@ -89,7 +89,7 @@ class TestMustAnnounce:
 
     def test_must_announce_sheriff(self, config, game_state):
         """When sheriff is alive, announcement should include sheriff seat."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             announcement = agent._build_must_announce(Phase.DAY_DISCUSSION, game_state)
             assert "sheriff" in announcement
@@ -101,14 +101,14 @@ class TestValidateNarration:
 
     def test_validate_empty_narration_fails(self, config, game_state):
         """Empty narration should fail validation."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             result = agent._validate_narration("", {"deaths": []})
             assert result is False, "Empty narration should fail"
 
     def test_validate_narration_missing_death_fails(self, config, game_state):
         """Narration missing a death should fail validation."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             must_announce = {"deaths": [10]}
             # Narration does not mention seat 10
@@ -117,7 +117,7 @@ class TestValidateNarration:
 
     def test_validate_narration_valid(self, config, game_state):
         """Valid narration with all required facts should pass."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             must_announce = {"deaths": [10]}
             result = agent._validate_narration("Player 10号玩家死亡了", must_announce)
@@ -129,7 +129,7 @@ class TestValidateNarration:
 
     def test_validate_narration_missing_elimination_fails(self, config, game_state):
         """Narration missing an eliminated player should fail."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             must_announce = {"eliminated_today": {"seat": 3, "role": "werewolf"}}
             result = agent._validate_narration("投票结束，没有人被淘汰", must_announce)
@@ -141,7 +141,7 @@ class TestFallbackNarration:
 
     def test_fallback_death_announce(self, config, game_state):
         """Fallback for DAY_DEATH_ANNOUNCE should mention deaths."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             must_announce = agent._build_must_announce(Phase.DAY_DEATH_ANNOUNCE, game_state)
             narration = agent._template_narration(Phase.DAY_DEATH_ANNOUNCE, must_announce)
@@ -149,7 +149,7 @@ class TestFallbackNarration:
 
     def test_fallback_peaceful_night(self, config, game_state):
         """Fallback for peaceful night should mention 平安夜."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             must_announce = {"deaths": [], "alive_players": [1, 2, 3], "phase": "天亮公布死讯"}
             narration = agent._template_narration(Phase.DAY_DEATH_ANNOUNCE, must_announce)
@@ -157,7 +157,7 @@ class TestFallbackNarration:
 
     def test_fallback_night_werewolf(self, config, game_state):
         """Fallback for werewolf night phase."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             must_announce = agent._build_must_announce(Phase.NIGHT_WEREWOLF, game_state)
             narration = agent._template_narration(Phase.NIGHT_WEREWOLF, must_announce)
@@ -165,7 +165,7 @@ class TestFallbackNarration:
 
     def test_fallback_night_seer(self, config, game_state):
         """Fallback for seer night phase."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             must_announce = agent._build_must_announce(Phase.NIGHT_SEER, game_state)
             narration = agent._template_narration(Phase.NIGHT_SEER, must_announce)
@@ -173,7 +173,7 @@ class TestFallbackNarration:
 
     def test_fallback_game_end(self, config, game_state):
         """Fallback for game end should thank players."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             must_announce = agent._build_must_announce(Phase.GAME_END, game_state)
             narration = agent._template_narration(Phase.GAME_END, must_announce)
@@ -181,7 +181,7 @@ class TestFallbackNarration:
 
     def test_fallback_all_phases_have_narration(self, config, game_state):
         """Every Phase should produce a non-empty fallback narration."""
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=MagicMock()):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=MagicMock()):
             agent = JudgeAgent(config)
             for phase in Phase:
                 must_announce = agent._build_must_announce(phase, game_state)
@@ -201,14 +201,14 @@ class TestJudgeAgentCall:
         json_str = json.dumps({"narration": narration_text, "phase_summary": "test"})
 
         mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = json_str
+        mock_response.content = [MagicMock()]
+        mock_response.content[0].text = json_str
 
         mock_client = MagicMock()
-        mock_client.chat = MagicMock()
-        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_client.messages = MagicMock()
+        mock_client.messages.create = AsyncMock(return_value=mock_response)
 
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=mock_client):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=mock_client):
             agent = JudgeAgent(config)
             # Ensure player_10 death in eliminated_tonight for validation
             result = await agent(Phase.DAY_DEATH_ANNOUNCE, game_state)
@@ -220,14 +220,14 @@ class TestJudgeAgentCall:
     async def test_fallback_on_invalid_response(self, config, game_state):
         """Judge should use template fallback when LLM response is invalid."""
         mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = "not valid json"
+        mock_response.content = [MagicMock()]
+        mock_response.content[0].text = "not valid json"
 
         mock_client = MagicMock()
-        mock_client.chat = MagicMock()
-        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_client.messages = MagicMock()
+        mock_client.messages.create = AsyncMock(return_value=mock_response)
 
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=mock_client):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=mock_client):
             agent = JudgeAgent(config)
             result = await agent(Phase.DAY_DEATH_ANNOUNCE, game_state)
 
@@ -242,14 +242,14 @@ class TestJudgeAgentCall:
         json_str = json.dumps({"narration": "天亮了一夜平安", "phase_summary": "test"})
 
         mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = json_str
+        mock_response.content = [MagicMock()]
+        mock_response.content[0].text = json_str
 
         mock_client = MagicMock()
-        mock_client.chat = MagicMock()
-        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        mock_client.messages = MagicMock()
+        mock_client.messages.create = AsyncMock(return_value=mock_response)
 
-        with patch("werewolf.agents.base.AsyncOpenAI", return_value=mock_client):
+        with patch("werewolf.agents.base.AsyncAnthropic", return_value=mock_client):
             agent = JudgeAgent(config)
             result = await agent(Phase.DAY_DEATH_ANNOUNCE, game_state)
 
