@@ -1,374 +1,245 @@
-"""Judge (Game Master) agent for AI Werewolf game.
-
-The JudgeAgent narrates game events, announces deaths, and guides the game
-flow. It validates LLM-generated narrations against required facts and falls
-back to deterministic template-based narration when validation fails.
-"""
+"""Judge agent — controls game through MessageHub with permission-based routing."""
 
 from __future__ import annotations
 
-import json
-import logging
-from pathlib import Path
-from typing import Any
+import json, logging, random
+from typing import Callable, Awaitable
 
-import jinja2
-
-from werewolf.agents.base import AgentResponse, BaseAgent
+from werewolf.agents.base import BaseAgent
+from werewolf.agents.hub import MessageHub
 from werewolf.config import GameConfig
-from werewolf.engine.state import GameState, Phase
+from werewolf.engine.state import GameState, Phase, Role
 
 logger = logging.getLogger(__name__)
 
-# ── Phase display names ────────────────────────────────────────────
-
-PHASE_CHINESE: dict[Phase, str] = {
-    Phase.SETUP: "游戏准备",
-    Phase.SHERIFF_ELECTION: "警长竞选",
-    Phase.NIGHT_WEREWOLF: "狼人行动阶段",
-    Phase.NIGHT_SEER: "预言家行动阶段",
-    Phase.NIGHT_WITCH: "女巫行动阶段",
-    Phase.NIGHT_HUNTER: "猎人确认阶段",
-    Phase.NIGHT_GUARD: "守卫行动阶段",
-    Phase.DAY_DEATH_ANNOUNCE: "天亮公布死讯",
-    Phase.DAY_DISCUSSION: "白天发言环节",
-    Phase.DAY_VOTE: "白天投票环节",
-    Phase.GAME_END: "游戏结束",
-}
-
-TEMPLATES_DIR = Path(__file__).parent / "prompts"
-JUDGE_TEMPLATE = "judge.j2"
+JUDGE_TOOLS: list[dict] = [
+    {
+        "name": "post_message",
+        "description": "发布消息。permission: public=所有人可见, werewolf=仅狼人, private:N=仅N号玩家, judge=仅法官。用 natural language 主持游戏，玩家的回复会自动出现在对应频道中。",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "content": {"type": "string", "description": "消息内容，用自然语言"},
+                "permission": {"type": "string", "description": "public/werewolf/private:N/judge"},
+            },
+            "required": ["content", "permission"],
+        },
+    },
+    {
+        "name": "ask_player",
+        "description": "向玩家提问。reply_permission 控制回复的可见性：public=公开发言(白天), werewolf=狼人频道, private:N=仅N号可见(预言家/女巫/守卫夜间私聊)",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "seat": {"type": "integer"},
+                "message": {"type": "string", "description": "对该玩家说的话/问的问题"},
+                "reply_permission": {"type": "string", "description": "回复可见性: public/werewolf/private:N, 默认public"},
+            },
+            "required": ["seat", "message"],
+        },
+    },
+    {
+        "name": "eliminate_player",
+        "description": "将玩家淘汰出局。",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "seat": {"type": "integer"},
+                "reason": {"type": "string", "description": "vote/wolf_kill/poison/hunter_shot"},
+            },
+            "required": ["seat", "reason"],
+        },
+    },
+    {
+        "name": "start_vote",
+        "description": "开始投票。系统自动收集所有存活玩家的投票并淘汰最高票。",
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "end_game",
+        "description": "结束游戏。",
+        "input_schema": {
+            "type": "object",
+            "properties": {"winner": {"type": "string"}, "reason": {"type": "string"}},
+            "required": ["winner", "reason"],
+        },
+    },
+]
 
 
 class JudgeAgent(BaseAgent):
-    """AI Game Master that narrates the Werewolf game.
+    """Judge drives game through MessageHub with permission-based routing."""
 
-    Builds a constraints block (MUST_ANNOUNCE) from the game state, renders
-    the judge.j2 template as a system prompt, and validates the LLM output
-    against required facts.
-
-    Implements the callable protocol expected by GameOrchestrator:
-        async def __call__(self, phase, game_state) -> AgentResponse
-    """
-
-    def __init__(self, config: GameConfig, agent_name: str = "judge") -> None:
+    def __init__(self, config: GameConfig, agent_name: str = "judge"):
         super().__init__(config, agent_name)
-        self._env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(str(TEMPLATES_DIR)),
-            autoescape=False,
-        )
-        self._template = self._env.get_template(JUDGE_TEMPLATE)
+        self.hub = MessageHub()
+        self.player_speaker: Callable[[int, str, str], Awaitable[str]] | None = None
+        self.state: GameState | None = None
 
-    async def __call__(
-        self,
-        phase: Phase,
-        game_state: GameState,
-    ) -> AgentResponse:
-        """Narrate the current game phase.
+    async def run_game(self, state: GameState) -> GameState:
+        self.state = state
+        # hub already created and wired by main.py
 
-        Args:
-            phase: Current game phase to narrate.
-            game_state: Current game state.
+        cn = {"werewolf": "狼人", "seer": "预言家", "witch": "女巫", "hunter": "猎人", "guard": "守卫", "villager": "平民"}
+        for p in state.players.values():
+            self.hub.register(p.seat_number, cn.get(p.role.value, p.role.value))
 
-        Returns:
-            AgentResponse with dialogue set to the narration text.
-        """
-        must_announce = self._build_must_announce(phase, game_state)
-        context = self._build_context(phase, game_state, must_announce)
+        system = self._build_prompt(state)
+        messages: list[dict] = [
+            {"role": "user", "content": "游戏开始！请作为法官主持这局狼人杀。"}
+        ]
 
-        system_prompt = self._template.render(**context)
+        for _ in range(80):
+            # Include recent hub log as separate context if content is a string
+            hub_log = self.hub.judge_log()
+            last = messages[-1]
+            if hub_log and isinstance(last.get("content"), str):
+                last["content"] = last["content"].split("【消息记录】")[0].strip() + f"\n\n【消息记录】\n{hub_log}"
 
-        response = await self.call(
-            system_prompt=system_prompt,
-            user_message=f"请主持游戏 {phase.name} 阶段的叙事。",
-            default_action="narrate",
-        )
-
-        # Try to extract narration from the LLM response
-        narration = self._extract_narration(response.raw_response)
-        if narration is None:
-            logger.warning(
-                "Judge could not extract narration from LLM response, using fallback"
-            )
-            narration = self._template_narration(phase, must_announce)
-
-        # Validate the narration
-        if not self._validate_narration(narration, must_announce):
-            logger.warning(
-                "Judge narration failed validation for phase %s, using fallback",
-                phase.name,
-            )
-            narration = self._template_narration(phase, must_announce)
-
-        return AgentResponse(
-            action="narrate",
-            dialogue=narration,
-            reasoning="",
-            raw_response=response.raw_response,
-        )
-
-    # ── Context builders ────────────────────────────────────────────
-
-    def _build_context(
-        self,
-        phase: Phase,
-        state: GameState,
-        must_announce: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Build the Jinja2 template context for the judge."""
-        alive = sorted(
-            state.alive_players(), key=lambda p: p.seat_number
-        )
-        alive_ids = [str(p.seat_number) for p in alive]
-
-        return {
-            "role_name": "游戏主持人",
-            "game_round": state.round_number,
-            "current_phase": PHASE_CHINESE.get(phase, phase.name),
-            "alive_players": alive_ids,
-            "memories": None,
-            "game_history": self._build_game_history(state),
-            "must_announce": must_announce,
-        }
-
-    def _build_must_announce(
-        self, phase: Phase, state: GameState
-    ) -> dict[str, Any]:
-        """Build the MUST_ANNOUNCE constraint block from game state.
-
-        Contains all facts that the judge must faithfully include in the
-        narration. This is rendered as JSON in the template prompt.
-        """
-        alive = sorted(
-            state.alive_players(), key=lambda p: p.seat_number
-        )
-        alive_numbers = [p.seat_number for p in alive]
-
-        announcement: dict[str, Any] = {
-            "phase": PHASE_CHINESE.get(phase, phase.name),
-            "round": state.round_number,
-            "alive_players": alive_numbers,
-            "alive_count": len(alive_numbers),
-        }
-
-        if state.sheriff_id is not None:
-            sheriff = state.players.get(state.sheriff_id)
-            if sheriff and sheriff.is_alive:
-                announcement["sheriff"] = sheriff.seat_number
-
-        # Phase-specific death announce
-        if phase == Phase.DAY_DEATH_ANNOUNCE:
-            deaths = state.eliminated_tonight
-            if deaths:
-                announcement["deaths"] = [
-                    self._player_seat(pid, state) for pid in deaths
-                ]
-            else:
-                announcement["deaths"] = []
-
-        elif phase == Phase.DAY_VOTE:
-            if state.eliminated_today:
-                eliminated = state.eliminated_today[-1]
-                player = state.players.get(eliminated)
-                if player:
-                    announcement["eliminated_today"] = {
-                        "seat": player.seat_number,
-                        "role": player.role.value,
-                    }
-            else:
-                announcement["eliminated_today"] = None
-
-        elif phase == Phase.GAME_END:
-            announcement["final_round"] = state.round_number
-
-        return announcement
-
-    def _build_game_history(self, state: GameState) -> str:
-        """Summarise recent public events for the judge."""
-        parts: list[str] = []
-        if state.eliminated_tonight:
-            deaths = [
-                self._seat_display(pid, state)
-                for pid in state.eliminated_tonight
-            ]
-            parts.append(f"昨晚死亡: {', '.join(deaths)}")
-        if state.eliminated_today:
-            deaths = [
-                self._seat_display(pid, state)
-                for pid in state.eliminated_today
-            ]
-            parts.append(f"今日被放逐: {', '.join(deaths)}")
-        return "\n".join(parts) if parts else "暂无"
-
-    # ── Validation ──────────────────────────────────────────────────
-
-    def _validate_narration(
-        self, narration: str, must_announce: dict[str, Any]
-    ) -> bool:
-        """Validate that the narration contains all required facts.
-
-        Checks:
-        - If there are deaths to announce, the narration mentions them.
-        - If there is an elimination today, the narration mentions it.
-        - The narration is non-empty.
-
-        Returns True if validation passes, False otherwise.
-        """
-        if not narration or not narration.strip():
-            return False
-
-        # Check that announced deaths appear in the narration
-        deaths = must_announce.get("deaths", [])
-        for death_seat in deaths:
-            seat_str = str(death_seat)
-            if seat_str not in narration:
-                logger.warning(
-                    "Judge narration missing death of player %s", seat_str
+            try:
+                resp = await self.client.messages.create(
+                    model=self.config.model_name,
+                    system=system,
+                    messages=messages[-20:],  # keep context bounded
+                    temperature=self.config.temperature,
+                    max_tokens=2048,
+                    tools=JUDGE_TOOLS,
                 )
-                return False
+            except Exception as e:
+                logger.error("Judge API error: %s", e)
+                break
 
-        # Check that eliminated player is mentioned
-        eliminated = must_announce.get("eliminated_today")
-        if eliminated is not None and isinstance(eliminated, dict):
-            seat_str = str(eliminated.get("seat", ""))
-            if seat_str and seat_str not in narration:
-                logger.warning(
-                    "Judge narration missing elimination of player %s", seat_str
-                )
-                return False
+            tool_uses = [b for b in resp.content if b.type == "tool_use"]
+            if not tool_uses:
+                text = next((b.text for b in resp.content if b.type == "text"), "")
+                if text:
+                    print(f"\n  法官: {text}", flush=True)
+                    self.hub.post("judge", text, "public")
+                    messages.append({"role": "assistant", "content": text})
+                continue
 
-        return True
+            tool_results = []
+            for block in tool_uses:
+                result = await self._run_tool(block.name, block.input)
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": json.dumps(result, ensure_ascii=False),
+                })
+                if block.name == "end_game":
+                    state.phase = Phase.GAME_END
+                    return state
 
-    # ── Fallback narration ──────────────────────────────────────────
+            messages.append({"role": "assistant", "content": [b.to_dict() for b in resp.content]})
+            messages.append({"role": "user", "content": tool_results})
 
-    def _template_narration(
-        self, phase: Phase, must_announce: dict[str, Any]
-    ) -> str:
-        """Generate deterministic fallback narration from MUST_ANNOUNCE.
+        return state
 
-        Used when LLM response parsing or validation fails. Produces a
-        minimal but factually correct narration.
-        """
-        phase_name = must_announce.get("phase", "")
-        alive = must_announce.get("alive_players", [])
-        alive_str = "、".join(str(s) for s in alive)
+    async def _dummy_speaker(self, seat: int, role: str, ctx: str) -> str:
+        return f"（{seat}号）"
 
-        if phase == Phase.DAY_DEATH_ANNOUNCE:
-            deaths = must_announce.get("deaths", [])
-            if deaths:
-                death_str = "、".join(f"{s}号" for s in deaths)
-                return (
-                    f"天亮了，昨晚{death_str}玩家死亡。"
-                    f"存活玩家: {alive_str}号。"
-                    f"现在开始发言环节。"
-                )
-            else:
-                return (
-                    f"天亮了，昨晚是平安夜，没有玩家死亡。"
-                    f"存活玩家: {alive_str}号。"
-                    f"现在开始发言环节。"
-                )
-
-        elif phase == Phase.DAY_DISCUSSION:
-            sheriff = must_announce.get("sheriff")
-            if sheriff:
-                return (
-                    f"现在是第{must_announce.get('round', '')}轮白天发言环节。"
-                    f"警长为{sheriff}号玩家。"
-                    f"请按照发言顺序依次发言。"
-                )
-            return (
-                f"现在是第{must_announce.get('round', '')}轮白天发言环节。"
-                f"请按照发言顺序依次发言。"
-            )
-
-        elif phase == Phase.DAY_VOTE:
-            eliminated = must_announce.get("eliminated_today")
-            if eliminated and isinstance(eliminated, dict):
-                seat = eliminated.get("seat", "")
-                role = eliminated.get("role", "")
-                return f"{seat}号玩家被公投出局，身份是{role}。"
-            return "本轮投票无人被淘汰，进入夜晚。"
-
-        elif phase == Phase.GAME_END:
-            return (
-                f"游戏结束。感谢各位玩家的参与。"
-                f"最终存活玩家: {alive_str}号。"
-            )
-
-        elif phase == Phase.SHERIFF_ELECTION:
-            return (
-                f"现在开始警长竞选环节。"
-                f"请想要竞选警长的玩家举手参选。"
-            )
-
-        elif phase == Phase.NIGHT_WEREWOLF:
-            return "天黑请闭眼。狼人请睁眼，请选择今晚的猎杀目标。"
-
-        elif phase == Phase.NIGHT_SEER:
-            return "预言家请睁眼，请选择今晚的查验目标。"
-
-        elif phase == Phase.NIGHT_WITCH:
-            return "女巫请睁眼，请决定是否使用解药或毒药。"
-
-        elif phase == Phase.NIGHT_GUARD:
-            return "守卫请睁眼，请选择今晚的守护目标。"
-
-        elif phase == Phase.NIGHT_HUNTER:
-            return "猎人请睁眼，确认你的开枪状态。"
-
-        elif phase == Phase.SETUP:
-            return "游戏准备就绪，12名玩家已就位。游戏即将开始。"
-
-        # Generic fallback
-        return f"现在是{phase_name}阶段。存活玩家: {alive_str}号。"
-
-    # ── Response parsing ────────────────────────────────────────────
-
-    def _extract_narration(self, raw_response: str) -> str | None:
-        """Extract the narration field from the judge's JSON response.
-
-        The judge template asks for JSON with 'narration' and 'phase_summary'
-        fields, not the standard 'action'/'target' format.
-        """
-        if not raw_response:
-            return None
-
-        json_str = self._extract_json(raw_response)
-        if json_str is None:
-            return None
-
+    async def _run_tool(self, name: str, inp: dict) -> dict:
         try:
-            data = json.loads(json_str)
-        except json.JSONDecodeError:
-            return None
+            if name == "post_message":
+                self.hub.post("judge", inp.get("content", ""), inp.get("permission", "public"))
+                print(f"\n  法官: {inp.get('content', '')[:100]}", flush=True)
+                return {"ok": True}
+            elif name == "ask_player":
+                seat = inp.get("seat", 0)
+                msg = inp.get("message", "")
+                perm = inp.get("reply_permission", "public")
+                speech = await self.hub.ask_player(seat, msg, reply_permission=perm)
+                print(f"\n  {seat}号: {speech}", flush=True)
+                return {"seat": seat, "response": speech}
+            elif name == "eliminate_player":
+                return self._eliminate(inp)
+            elif name == "start_vote":
+                return await self._vote()
+            elif name == "end_game":
+                return {"ok": True}
+            return {"error": f"unknown: {name}"}
+        except Exception as e:
+            return {"error": str(e)}
 
-        narration = data.get("narration", "")
-        if isinstance(narration, str) and narration.strip():
-            return narration.strip()
+    def _eliminate(self, inp: dict) -> dict:
+        seat = inp.get("seat", 0)
+        reason = inp.get("reason", "vote")
+        player = next((p for p in (self.state.players.values() if self.state else []) if p.seat_number == seat), None)
+        if not player:
+            return {"error": f"玩家{seat}号不存在"}
+        player.is_alive = False
+        self.hub.kill(seat)
+        self.hub.post("judge", f"{seat}号玩家被淘汰（{reason}），身份是{player.role.value}", "public")
+        print(f"\n  [{reason}] {seat}号被淘汰！身份: {player.role.value}", flush=True)
+        w, r = self._check_win()
+        return {"eliminated": seat, "role": player.role.value, "winner": w, "win_reason": r}
 
-        return None
+    async def _vote(self) -> dict:
+        alive = [p for p in (self.state.players.values() if self.state else []) if p.is_alive]
+        votes: dict[int, int] = {}
+        for p in alive:
+            others = [a.seat_number for a in alive if a.seat_number != p.seat_number]
+            msg = f"请投票放逐一位玩家。可选: {others}。只回复数字。"
+            speech = await self.hub.ask_player(p.seat_number, msg)
+            try:
+                t = int(speech.strip().split()[0])
+            except (ValueError, IndexError):
+                t = random.choice(others) if others else p.seat_number
+            votes[p.seat_number] = t
 
-    # ── Helpers ─────────────────────────────────────────────────────
+        tally: dict[int, int] = {}
+        for t in votes.values():
+            tally[t] = tally.get(t, 0) + 1
+        if tally:
+            top = max(tally, key=tally.get)
+            if tally[top] > len(votes) / 2:
+                tp = next((pp for pp in alive if pp.seat_number == top), None)
+                if tp:
+                    tp.is_alive = False
+                    self.hub.kill(top)
+                    self.hub.post("judge", f"投票结果: {top}号被放逐（{tally[top]}/{len(votes)}票），身份: {tp.role.value}", "public")
+                    print(f"\n  投票: {top}号被放逐（{tally[top]}/{len(votes)}票），身份: {tp.role.value}", flush=True)
+                    return {"eliminated": top, "votes": tally, "role": tp.role.value}
+        self.hub.post("judge", "无人被放逐", "public")
+        return {"eliminated": None}
 
-    @staticmethod
-    def _player_seat(player_id: str, state: GameState) -> int | None:
-        """Get a player's seat number from their player_id."""
-        player = state.players.get(player_id)
-        if player is not None:
-            return player.seat_number
-        return None
+    def _check_win(self) -> tuple[str | None, str]:
+        s = self.state
+        if not s: return None, ""
+        wolves = s.alive_werewolves()
+        good = s.alive_good_players()
+        if not wolves: return "good", "所有狼人被消灭"
+        if len(wolves) >= len(good): return "werewolf", "狼人数量达到好人数量"
+        if not s.alive_villagers(): return "werewolf", "所有平民被消灭"
+        if not s.alive_gods(): return "werewolf", "所有神民被消灭"
+        return None, ""
 
-    @staticmethod
-    def _seat_display(player_id: str, state: GameState) -> str:
-        """Convert a player_id to a human-readable seat number string."""
-        player = state.players.get(player_id)
-        if player is not None:
-            return f"{player.seat_number}号玩家"
-        return player_id
+    def _build_prompt(self, state: GameState) -> str:
+        cn = {"werewolf": "狼人", "seer": "预言家", "witch": "女巫", "hunter": "猎人", "guard": "守卫", "villager": "平民"}
+        players = "\n".join(f"  {p.seat_number}号: {cn.get(p.role.value, p.role.value)}" for p in sorted(state.players.values(), key=lambda x: x.seat_number))
+        return f"""你是狼人杀法官，用自然语言主持游戏。
+
+## 玩家身份（绝对保密！玩家互相不知道身份）
+{players}
+
+## ⚠️ 权限规则（极其重要，违反会毁掉游戏！）
+- **夜晚狼人讨论**: ask_player(seat, message, reply_permission="werewolf") — 回复仅狼人+法官可见
+- **夜晚预言家**: ask_player(seat, message, reply_permission="private:预言家座位") — 回复仅该玩家+法官可见
+- **夜晚女巫**: ask_player(seat, message, reply_permission="private:女巫座位") — 同上
+- **夜晚守卫**: ask_player(seat, message, reply_permission="private:守卫座位") — 同上
+- **白天发言**: ask_player(seat, message, reply_permission="public") — 所有人可见
+- **公告**: post_message(content, permission="public")
+- **狼人通知**: post_message(content, permission="werewolf")
+
+## 游戏流程
+**夜晚**: post_message("天黑请闭眼","public") → post_message("狼人请睁眼","werewolf") → ask_player 每个狼人(reply_permission="werewolf")，让它们讨论后确定目标 → post_message("狼人请闭眼","werewolf")
+→ ask_player 预言家(reply_permission="private:N") → ask_player 女巫(reply_permission="private:N")，告诉谁死了问是否用药 → ask_player 守卫(reply_permission="private:N")
+**天亮**: announce_night_result(deaths)
+**发言**: 从1号顺时针 ask_player(seat,"请发言",reply_permission="public")
+**投票**: start_vote → eliminate_player
+**循环**: 直到 end_game
+
+用自然中文主持，像真正的法官一样说话！"""
 
 
-# Module-level sentinel for lazy import by GameOrchestrator.
-# Set to a configured JudgeAgent instance before use, or leave as None
-# (the orchestrator gracefully handles None by returning default responses).
 judge_agent: JudgeAgent | None = None

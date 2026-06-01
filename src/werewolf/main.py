@@ -74,7 +74,8 @@ def cmd_run(args) -> int:
 
     from werewolf.storage.db import init_db
     from werewolf.storage.repository import Repository
-    from werewolf.engine.game import GameOrchestrator
+    from werewolf.engine.state import GameState, Phase, STANDARD_12P, get_camp
+    from werewolf.engine.phases import setup_phase
     from werewolf.agents.player import PlayerAgent
     from werewolf.agents.judge import JudgeAgent
 
@@ -84,46 +85,13 @@ def cmd_run(args) -> int:
     player = PlayerAgent(config, "player")
     judge = JudgeAgent(config, "judge")
 
-    phase_labels: dict[str, str] = {
-        "sheriff_election": "Sheriff Election - 警长竞选",
-        "night": "Night Phase - 天黑请闭眼",
-        "day_death_announce": "Day Breaks - 天亮了",
-        "day_discussion": "Day Discussion - 发言环节",
-        "day_vote": "Day Vote - 投票环节",
-    }
+    async def player_speaker(seat: int, role: str, context: str) -> str:
+        return await player.speak(seat, role, context)
 
-    def _progress(event: str, data: dict) -> None:
-        if event == "game_start":
-            console.print(
-                f"[bold cyan]  Game started![/bold cyan] "
-                f"[red]Werewolves: {data['werewolf_count']}[/red]  "
-                f"[green]Good: {data['good_count']}[/green]"
-            )
-        elif event == "phase":
-            phase = data.get("phase", "")
-            label = phase_labels.get(phase, phase)
-            console.print(f"  [dim]--> {label}[/dim]")
-        elif event == "round_start":
-            alive = data.get("alive_count", 12)
-            rn = data.get("round_number", 0)
-            console.print(
-                f"\n[bold yellow]--- Round {rn} ---[/bold yellow]  "
-                f"[cyan]Alive: {alive}[/cyan]"
-            )
-        elif event == "round_end":
-            alive = data.get("alive_count", 12)
-            rn = data.get("round_number", 0)
-            console.print(f"  [dim]Round {rn} complete, {alive} players remain[/dim]")
-        elif event == "game_end":
-            winner = data.get("winner", "unknown")
-            reason = data.get("reason", "")
-            rounds = data.get("total_rounds", 0)
-            color = "red" if winner == "werewolf" else "green" if winner == "good" else "yellow"
-            winner_label = "Werewolf" if winner == "werewolf" else "Good" if winner == "good" else "Stalemate"
-            console.print(
-                f"\n[bold {color}]  Game Over! Winner: {winner_label}[/bold {color}]  "
-                f"[dim]({reason} | {rounds} rounds)[/dim]"
-            )
+    judge.player_speaker = player_speaker
+
+    console.print(f"  [red]Werewolves: 4[/red]  [green]Good: 8[/green]")
+    console.print()
 
     try:
         for game_num in range(1, config.num_games + 1):
@@ -132,8 +100,19 @@ def cmd_run(args) -> int:
                 console.print(f"\n[bold cyan]=== Game {game_num}/{config.num_games} ===[/bold cyan]")
 
             start_time = time.time()
-            orchestrator = GameOrchestrator(config, repo, on_progress=_progress, player_agent=player, judge_agent=judge)
-            final_state = asyncio.run(orchestrator.run_game(game_id))
+            state = GameState(game_id=game_id, players={})
+            setup_phase(state, STANDARD_12P)
+
+            # Wire player to judge's hub for tool access
+            player.set_hub(judge.hub)
+            player.set_game_state(state)
+            # Re-create hub per game
+            from werewolf.agents.hub import MessageHub
+            judge.hub = MessageHub()
+            judge.hub.set_speaker(player_speaker)
+            player.set_hub(judge.hub)
+
+            final_state = asyncio.run(judge.run_game(state))
 
             elapsed = time.time() - start_time
             console.print(
