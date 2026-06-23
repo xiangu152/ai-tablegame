@@ -1,0 +1,17 @@
+# AI Werewolf Game - 配置文件
+# 使用方式: werewolf run --config config.yaml
+
+api:
+  base_url: https://api.deepseek.com/anthropic
+  api_key: sk-cd99e37964bf421fa065a047e216073c
+  model: deepseek-v4-pro
+
+game:
+  mode: 12p
+  num_games: 1
+  temperature: 0.7
+  round_limit: 20
+
+learning:
+  concurrency: 4
+  db_path: .werewolf/game.db

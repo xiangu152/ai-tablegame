@@ -9,11 +9,7 @@ build/
 .venv/
 venv/
 
-# Runtime data
-.werewolf/
 
-# Config (contains API keys)
-config.yaml
 
 # IDE
 .vscode/
