@@ -1,3 +1,5 @@
 .omc
 .venv
 config.yaml
+dnd_data
+__pycache__

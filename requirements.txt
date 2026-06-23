@@ -1,0 +1,9 @@
+# DND AI DM Agent - Dependencies
+# Install: pip install -r requirements.txt
+
+anthropic>=0.39.0
+pdfplumber>=0.11.0
+pyyaml>=6.0
+
+# Optional: better encoding detection for rulebook files
+# chardet>=5.0

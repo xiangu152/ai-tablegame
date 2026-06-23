@@ -29,6 +29,73 @@
   },
   "customNotes": [],
   "directoryMap": {},
-  "hotPaths": [],
+  "hotPaths": [
+    {
+      "path": "dm_agent/dm.py",
+      "accessCount": 5,
+      "lastAccessed": 1782232142451,
+      "type": "file"
+    },
+    {
+      "path": "dm_agent/__init__.py",
+      "accessCount": 4,
+      "lastAccessed": 1782231815375,
+      "type": "file"
+    },
+    {
+      "path": "dm_agent/memory_generator.py",
+      "accessCount": 4,
+      "lastAccessed": 1782231954791,
+      "type": "file"
+    },
+    {
+      "path": "dm_agent/rulebook_reader.py",
+      "accessCount": 4,
+      "lastAccessed": 1782232136803,
+      "type": "file"
+    },
+    {
+      "path": "config.yaml",
+      "accessCount": 3,
+      "lastAccessed": 1782231825999,
+      "type": "file"
+    },
+    {
+      "path": "dm_agent/pdf_parser.py",
+      "accessCount": 3,
+      "lastAccessed": 1782232137595,
+      "type": "file"
+    },
+    {
+      "path": "dm_agent/config_loader.py",
+      "accessCount": 2,
+      "lastAccessed": 1782231815544,
+      "type": "file"
+    },
+    {
+      "path": "dm_agent/llm_client.py",
+      "accessCount": 2,
+      "lastAccessed": 1782231815907,
+      "type": "file"
+    },
+    {
+      "path": "dm_agent/checkpoint.py",
+      "accessCount": 2,
+      "lastAccessed": 1782231817129,
+      "type": "file"
+    },
+    {
+      "path": "dnd_data/rule_book/convert_chm_to_md.py",
+      "accessCount": 1,
+      "lastAccessed": 1782230460034,
+      "type": "file"
+    },
+    {
+      "path": "requirements.txt",
+      "accessCount": 1,
+      "lastAccessed": 1782231955890,
+      "type": "file"
+    }
+  ],
   "userDirectives": []
 }
