@@ -1,0 +1,366 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1780024529907,
+  "projectRoot": "/Users/xiangu/Codes/agent/ai-tablegame",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": "/Users/xiangu/Codes/agent/ai-tablegame/.venv/bin/python3 -m pytest /Users/xiangu/Codes/agent/ai-tablegame/tests/ --ignore=tests/test_engine/test_game.py -q 2>&1 | tail -2",
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 0,
+      "lastAccessed": 1780024529901,
+      "keyFiles": []
+    },
+    "langrenshawiki": {
+      "path": "langrenshawiki",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1780024529901,
+      "keyFiles": [
+        "README.md",
+        "mkdocs.yml"
+      ]
+    },
+    "langrenshawiki/docs": {
+      "path": "langrenshawiki/docs",
+      "purpose": "Documentation",
+      "fileCount": 7,
+      "lastAccessed": 1780024529902,
+      "keyFiles": [
+        "about.md",
+        "event.md",
+        "faq.md"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src/werewolf/engine/game.py",
+      "accessCount": 59,
+      "lastAccessed": 1780045726223,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/main.py",
+      "accessCount": 36,
+      "lastAccessed": 1780212972386,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/agents/player.py",
+      "accessCount": 27,
+      "lastAccessed": 1780212948576,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/engine/phases.py",
+      "accessCount": 22,
+      "lastAccessed": 1780042014329,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/agents/judge.py",
+      "accessCount": 19,
+      "lastAccessed": 1780213333586,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/agents/base.py",
+      "accessCount": 17,
+      "lastAccessed": 1780211926078,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/config.py",
+      "accessCount": 17,
+      "lastAccessed": 1780211929776,
+      "type": "file"
+    },
+    {
+      "path": "tests/test_agents/test_player.py",
+      "accessCount": 17,
+      "lastAccessed": 1780213031273,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/engine/state.py",
+      "accessCount": 13,
+      "lastAccessed": 1780211933847,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/storage/repository.py",
+      "accessCount": 8,
+      "lastAccessed": 1780040477491,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/storage/models.py",
+      "accessCount": 8,
+      "lastAccessed": 1780040486298,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/storage/db.py",
+      "accessCount": 7,
+      "lastAccessed": 1780040485480,
+      "type": "file"
+    },
+    {
+      "path": "tests/test_engine/test_phases.py",
+      "accessCount": 7,
+      "lastAccessed": 1780040494980,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/agents/__init__.py",
+      "accessCount": 6,
+      "lastAccessed": 1780028088620,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/engine/rules.py",
+      "accessCount": 6,
+      "lastAccessed": 1780040474455,
+      "type": "file"
+    },
+    {
+      "path": "tests/test_learning/test_memory.py",
+      "accessCount": 6,
+      "lastAccessed": 1780040497431,
+      "type": "file"
+    },
+    {
+      "path": "pyproject.toml",
+      "accessCount": 6,
+      "lastAccessed": 1780043291723,
+      "type": "file"
+    },
+    {
+      "path": "tests/test_agents/test_judge.py",
+      "accessCount": 6,
+      "lastAccessed": 1780212807942,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/learning/memory.py",
+      "accessCount": 5,
+      "lastAccessed": 1780040477413,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/agents/prompts/witch.j2",
+      "accessCount": 5,
+      "lastAccessed": 1780040800111,
+      "type": "file"
+    },
+    {
+      "path": "config.yaml",
+      "accessCount": 5,
+      "lastAccessed": 1780043296556,
+      "type": "file"
+    },
+    {
+      "path": "langrenshawiki/docs/rules.md",
+      "accessCount": 4,
+      "lastAccessed": 1780025506360,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/__init__.py",
+      "accessCount": 4,
+      "lastAccessed": 1780027613006,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/engine/__init__.py",
+      "accessCount": 4,
+      "lastAccessed": 1780028088057,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/learning/__init__.py",
+      "accessCount": 4,
+      "lastAccessed": 1780028089785,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/learning/analyzer.py",
+      "accessCount": 4,
+      "lastAccessed": 1780040486751,
+      "type": "file"
+    },
+    {
+      "path": "tests/test_engine/test_game.py",
+      "accessCount": 4,
+      "lastAccessed": 1780040495612,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/agents/hub.py",
+      "accessCount": 4,
+      "lastAccessed": 1780213304530,
+      "type": "file"
+    },
+    {
+      "path": "langrenshawiki/docs/judge.md",
+      "accessCount": 3,
+      "lastAccessed": 1780025391232,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/agents/prompts/werewolf.j2",
+      "accessCount": 3,
+      "lastAccessed": 1780040506209,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/agents/prompts/judge.j2",
+      "accessCount": 3,
+      "lastAccessed": 1780040506984,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/agents/prompts/seer.j2",
+      "accessCount": 3,
+      "lastAccessed": 1780040514449,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/agents/prompts/villager.j2",
+      "accessCount": 3,
+      "lastAccessed": 1780040515362,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/agents/prompts/hunter.j2",
+      "accessCount": 3,
+      "lastAccessed": 1780040526667,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/agents/prompts/guard.j2",
+      "accessCount": 3,
+      "lastAccessed": 1780040527352,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/__main__.py",
+      "accessCount": 3,
+      "lastAccessed": 1780041330598,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 3,
+      "lastAccessed": 1780041501022,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/storage/__init__.py",
+      "accessCount": 2,
+      "lastAccessed": 1780028089224,
+      "type": "file"
+    },
+    {
+      "path": "src/werewolf/learning/adapter.py",
+      "accessCount": 2,
+      "lastAccessed": 1780040487394,
+      "type": "file"
+    },
+    {
+      "path": "tests/test_engine/test_rules.py",
+      "accessCount": 2,
+      "lastAccessed": 1780040494415,
+      "type": "file"
+    },
+    {
+      "path": "tests/test_engine/test_state.py",
+      "accessCount": 2,
+      "lastAccessed": 1780040497987,
+      "type": "file"
+    },
+    {
+      "path": "tests/test_storage/test_db.py",
+      "accessCount": 2,
+      "lastAccessed": 1780040508184,
+      "type": "file"
+    },
+    {
+      "path": "config.yaml.example",
+      "accessCount": 2,
+      "lastAccessed": 1780042129302,
+      "type": "file"
+    },
+    {
+      "path": "langrenshawiki/README.md",
+      "accessCount": 1,
+      "lastAccessed": 1780024564448,
+      "type": "file"
+    },
+    {
+      "path": "langrenshawiki/docs/roles/overview.md",
+      "accessCount": 1,
+      "lastAccessed": 1780024574139,
+      "type": "file"
+    },
+    {
+      "path": "langrenshawiki/docs/event.md",
+      "accessCount": 1,
+      "lastAccessed": 1780025189495,
+      "type": "file"
+    },
+    {
+      "path": "langrenshawiki/docs/strategy.md",
+      "accessCount": 1,
+      "lastAccessed": 1780025193504,
+      "type": "file"
+    },
+    {
+      "path": "langrenshawiki/docs/roles/good.md",
+      "accessCount": 1,
+      "lastAccessed": 1780025195869,
+      "type": "file"
+    },
+    {
+      "path": "langrenshawiki/docs/roles/werewolf.md",
+      "accessCount": 1,
+      "lastAccessed": 1780025196473,
+      "type": "file"
+    },
+    {
+      "path": "INSTALL.md",
+      "accessCount": 1,
+      "lastAccessed": 1780041566113,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

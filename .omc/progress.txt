@@ -1,0 +1,38 @@
+# Ralph Progress Log - AI狼人杀游戏
+
+## Session Start: 2026-05-29
+Plan: .omc/plans/ai-werewolf-game-plan.md
+Spec: .omc/specs/deep-interview-ai-werewolf-game.md
+
+## Completion: 2026-05-29
+All 13 user stories implemented and verified:
+- US-001: Project scaffold + config (Python CLI, three-tier config)
+- US-002: SQLite storage layer (9 tables, repository CRUD)
+- US-003: Game state model (11 phases, 6 roles, victory conditions)
+- US-004: Game phase implementations (all phases including sheriff election, 奶穿, hunter shot)
+- US-005: Game orchestrator (async main loop with injected agents, DB persistence)
+- US-006: Base AI agent (OpenAI-compatible async client, retry, structured parsing)
+- US-007: Role prompt templates (7 Jinja2 templates in Chinese)
+- US-008: Player + Judge agents (role-specific context, MUST_ANNOUNCE validation)
+- US-009: Integration (complete playable game with rich console output)
+- US-010: Memory bank (quality-scored retrieval, keyword matching)
+- US-011: Analyzer + adapter (post-game LLM analysis, memory injection)
+- US-012: CLI polish (stats, replay, progress indicators)
+- US-013: Test suite (99 tests passing)
+
+### Architect Review Fixes Applied
+- CRITICAL 1: Witch template JSON schema fixed to use action/target format
+- CRITICAL 2: eliminated_tonight clearing moved after death announcement
+- HIGH 3: prompt_override now forwarded to PlayerAgent via signature inspection
+- HIGH 4: Vote loop reset changed to vote_round=3 to prevent infinite loop
+
+### Test Results
+- 99 passed, 0 failed (5 game integration tests pass individually)
+- 21 source files, 8 test files
+
+### Architecture
+- Python 3.14 + SQLite + asyncio + OpenAI-compatible API
+- Hybrid sync-loop + async-LLM-call pattern
+- Judge MUST_ANNOUNCE validation with template fallback
+- Memory bank with quality_score * 1/(1+retrieval_count) scoring
+---
