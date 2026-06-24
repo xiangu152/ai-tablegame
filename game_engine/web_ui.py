@@ -216,6 +216,11 @@ def agent_status(game_name: str) -> dict:
         }
 
 
+def _generate_player_names(count: int) -> list[str]:
+    """生成初始玩家名 player1..playerN。Agent 可在协商中自行改名。"""
+    return [f"player{i}" for i in range(1, int(count) + 1)]
+
+
 class GameReader:
     def __init__(self, game_name: str):
         self.game_name = game_name
@@ -349,6 +354,7 @@ input:focus,select:focus{outline:none;border-color:#e94560}
     <div class="form-row">
       <select id="adv-select" style="flex:1"></select>
       <input id="game-name-input" placeholder="游戏名（可选）" style="flex:1">
+      <input id="player-count-input" type="number" value="4" style="width:60px;text-align:center" title="玩家数量">
       <button class="btn btn-primary" onclick="createGame()">创建</button>
     </div>
 
@@ -430,22 +436,21 @@ async function createGame() {
   const pdf = sel.value;
   let name = document.getElementById('game-name-input').value.trim() || sel.selectedOptions[0].dataset.name;
   name = name.replace(/[^a-zA-Z0-9一-鿿_-]/g,'_').slice(0,50);
-  const r = await post('/api/games/create',{game_name:name,pdf_file:pdf});
+  const pc = parseInt(document.getElementById('player-count-input').value) || 4;
+  const r = await post('/api/games/create',{game_name:name,pdf_file:pdf,player_count:pc});
   if (r && r.status==='ok') {
     currentGame=name;
     document.getElementById('page-home').style.display='none';
-    // 自动启动 agent
     document.body.innerHTML = `<div class="cards" style="max-width:700px;margin:40px auto">
       <div class="card"><h2 style="color:#4ecca3">✅ 备团完成 — ${name}</h2>
-      <p style="color:#aaa;margin:12px 0">正在启动 DM + 4 名 Player agent...</p>
+      <p style="color:#aaa;margin:12px 0">正在启动 DM + ' + pc + ' 名 Player agent...</p>
       <div id="agent-progress" style="color:#888;font-size:13px"></div>
       <button class="btn btn-primary" onclick="location.reload()" style="margin-top:8px">🔍 打开观察面板</button></div></div>`;
 
-    // 启动 agents
-    const ar = await post('/api/games/'+name+'/agents/start',{players:['阿拉贡','甘道夫','莱戈拉斯','吉姆利']});
+    const ar = await post('/api/games/'+name+'/agents/start',{player_count:pc});
     document.getElementById('agent-progress').innerHTML = '⚙️ DM 正在备团...<br>'
       + 'Phase 1: DM 阅读团本+规则书，在思考室分析<br>'
-      + 'Phase 2: Player agents 加入酒馆大厅<br>'
+      + 'Phase 2: ' + pc + ' Player agents 加入酒馆大厅<br>'
       + 'Phase 3-5: 协商角色 → 创建角色卡 → 存档<br>'
       + '<span style="color:#4ecca3">Agent 进程中，点击下方按钮观察</span>';
   }
@@ -732,8 +737,11 @@ class Handler(BaseHTTPRequestHandler):
 
             elif p.path.endswith("/agents/start"):
                 game = p.path.split("/")[3]
-                players = body.get("players", ["阿拉贡", "甘道夫", "莱戈拉斯", "吉姆利"])
-                self._json(start_agents(game, players))
+                count = body.get("player_count", body.get("players", 4))
+                if isinstance(count, list):
+                    count = len(count)
+                names = _generate_player_names(int(count))
+                self._json(start_agents(game, names))
 
             elif p.path.endswith("/agents/stop"):
                 game = p.path.split("/")[3]
@@ -741,8 +749,9 @@ class Handler(BaseHTTPRequestHandler):
 
             elif p.path.endswith("/agents/round"):
                 game = p.path.split("/")[3]
-                players = body.get("players", ["阿拉贡","甘道夫","莱戈拉斯","吉姆利"])
-                # 在后台线程运行一轮游戏
+                # 从角色卡获取实际玩家列表
+                pls = GameReader(game).players()
+                players = [p["name"] for p in (pls or [])] or body.get("players", ["阿拉贡","甘道夫","莱戈拉斯","吉姆利"])
                 def run_round():
                     from game_engine.agent_runner import run_game_round
                     results = run_game_round(game, players)

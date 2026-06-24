@@ -32,8 +32,8 @@
   "hotPaths": [
     {
       "path": "game_engine/web_ui.py",
-      "accessCount": 36,
-      "lastAccessed": 1782238375828,
+      "accessCount": 45,
+      "lastAccessed": 1782268500699,
       "type": "file"
     },
     {
@@ -44,8 +44,14 @@
     },
     {
       "path": "game_engine/game_session.py",
-      "accessCount": 20,
-      "lastAccessed": 1782239724010,
+      "accessCount": 23,
+      "lastAccessed": 1782268556837,
+      "type": "file"
+    },
+    {
+      "path": "agent_roles/PLAYER.md",
+      "accessCount": 21,
+      "lastAccessed": 1782268620558,
       "type": "file"
     },
     {
@@ -55,21 +61,15 @@
       "type": "file"
     },
     {
-      "path": "agent_roles/PLAYER.md",
-      "accessCount": 18,
-      "lastAccessed": 1782240063605,
+      "path": "agent_roles/DM.md",
+      "accessCount": 17,
+      "lastAccessed": 1782268740665,
       "type": "file"
     },
     {
       "path": "game_engine/chat_room.py",
       "accessCount": 16,
       "lastAccessed": 1782236723559,
-      "type": "file"
-    },
-    {
-      "path": "agent_roles/DM.md",
-      "accessCount": 15,
-      "lastAccessed": 1782239719247,
       "type": "file"
     },
     {
@@ -187,6 +187,12 @@
       "type": "file"
     },
     {
+      "path": "dm_memory/test3pl/game_memory.json",
+      "accessCount": 5,
+      "lastAccessed": 1782268753560,
+      "type": "file"
+    },
+    {
       "path": "game_engine/dice.py",
       "accessCount": 4,
       "lastAccessed": 1782236724128,
@@ -208,6 +214,12 @@
       "path": "requirements.txt",
       "accessCount": 4,
       "lastAccessed": 1782236730815,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/test3pl/chat.log",
+      "accessCount": 4,
+      "lastAccessed": 1782268741060,
       "type": "file"
     },
     {
@@ -238,6 +250,12 @@
       "path": "dm_memory/barovia/chat.log",
       "accessCount": 2,
       "lastAccessed": 1782238101721,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/test3pl/adventure_text.json",
+      "accessCount": 2,
+      "lastAccessed": 1782268397961,
       "type": "file"
     },
     {
@@ -292,6 +310,24 @@
       "path": "dm_memory/strahd_full/rulebook_index.json",
       "accessCount": 1,
       "lastAccessed": 1782238524693,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/test3pl/rulebook_index.json",
+      "accessCount": 1,
+      "lastAccessed": 1782268399094,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/test3pl/session.json",
+      "accessCount": 1,
+      "lastAccessed": 1782268626955,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/test3pl/players/莱戈拉斯.json",
+      "accessCount": 1,
+      "lastAccessed": 1782268759436,
       "type": "file"
     }
   ],

@@ -1,0 +1,132 @@
+{
+  "name": "莱戈拉斯",
+  "player_name": "莱戈拉斯",
+  "race": "木精灵",
+  "class_": "战士",
+  "subclass": "",
+  "level": 1,
+  "background": "化外之民",
+  "alignment": "混乱善良",
+  "experience": 0,
+  "abilities": {
+    "str": 12,
+    "dex": 17,
+    "con": 14,
+    "int": 10,
+    "wis": 14,
+    "cha": 10
+  },
+  "combat": {
+    "hp_max": 12,
+    "hp_current": 12,
+    "hp_temp": 0,
+    "ac": 14,
+    "initiative": 3,
+    "speed": 35,
+    "hit_dice": "1d10",
+    "hit_dice_remaining": 1,
+    "death_saves": {
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "skill_proficiencies": [
+    "察觉",
+    "生存",
+    "运动",
+    "隐匿"
+  ],
+  "expertise": [],
+  "saving_throw_proficiencies": [
+    "力量",
+    "体质"
+  ],
+  "weapons": [
+    {
+      "name": "长弓",
+      "attack_bonus": 7,
+      "damage": "1d8+3",
+      "damage_type": "穿刺",
+      "range": "150/600",
+      "properties": [
+        "双手",
+        "弹药"
+      ]
+    },
+    {
+      "name": "短剑（主手）",
+      "attack_bonus": 5,
+      "damage": "1d6+3",
+      "damage_type": "穿刺",
+      "range": "近战",
+      "properties": [
+        "灵巧",
+        "轻型"
+      ]
+    },
+    {
+      "name": "短剑（副手）",
+      "attack_bonus": 5,
+      "damage": "1d6",
+      "damage_type": "穿刺",
+      "range": "近战",
+      "properties": [
+        "灵巧",
+        "轻型",
+        "副手"
+      ]
+    },
+    {
+      "name": "匕首",
+      "attack_bonus": 5,
+      "damage": "1d4+3",
+      "damage_type": "穿刺",
+      "range": "20/60",
+      "properties": [
+        "灵巧",
+        "轻型",
+        "投掷"
+      ]
+    }
+  ],
+  "armor": "皮甲",
+  "shield": false,
+  "items": [
+    "箭袋（20支箭）",
+    "探索者背包",
+    "弓弦蜡",
+    "精灵斗篷",
+    "草药包"
+  ],
+  "gold": 10,
+  "spells": [],
+  "spell_slots": {},
+  "spellcasting_ability": "",
+  "spell_save_dc": 10,
+  "features": [
+    "黑暗视觉 60尺",
+    "精灵血统：对抗魅惑优势，魔法睡眠免疫",
+    "出神：冥想4小时代替睡眠",
+    "野性面具：自然现象轻度遮蔽时可尝试躲藏",
+    "战斗风格：箭术（远程武器攻击检定+2）",
+    "回气：附赠动作回复1d10+1HP，短休/长休后恢复"
+  ],
+  "traits": [
+    "敏锐感官：察觉技能熟练",
+    "飞毛腿：基础速度35尺",
+    "荒野指引者：总能回忆起野外地形和地理特征"
+  ],
+  "feats": [],
+  "languages": [
+    "通用语",
+    "精灵语",
+    "木族语"
+  ],
+  "appearance": "铂金色长发，灰蓝色眼眸，精灵族典型的尖耳和修长身材。身穿深绿与棕色交织的森林色斗篷，行动时几无声响。",
+  "backstory": "莱戈拉斯，幽暗密林（黑森林）的精灵王子。数百年来守护着森林的安宁，以无双的箭术闻名于精灵国度。当黑暗的力量开始蔓延、连森林中的古树都开始哀鸣时，他踏上了追踪邪恶源头的旅程。迷雾将他引至巴洛维亚——一片与自然彻底隔绝的诅咒之地。失去了与森林的联系，莱戈拉斯必须依靠他的弓、他的剑，以及新结识的同伴来面对这片土地古老的黑暗。",
+  "notes": "",
+  "portrait": "",
+  "owner": "莱戈拉斯",
+  "created_at": "2026-06-24T02:38:21.480809+00:00",
+  "updated_at": "2026-06-24T02:38:21.480809+00:00"
+}

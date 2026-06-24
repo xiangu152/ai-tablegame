@@ -1,0 +1,33 @@
+{
+  "game_name": "test3pl",
+  "created_at": "2026-06-24T02:32:51.857176+00:00",
+  "prepared_at": "2026-06-24T02:32:51.857318+00:00",
+  "rulebook_path": "/Users/xiangu/Codes/agent/ai-tablegame/dnd_data/rule_book/markdown",
+  "adventure_pdf_path": "/Users/xiangu/Codes/agent/ai-tablegame/dnd_data/game_book/龙与地下城 5eDnD_施特拉德的诅咒CoS_中译v1.3.pdf",
+  "adventure_pages": 246,
+  "rulebook_files": 36,
+  "rulebook_h2_count": 1847,
+  "current_scene": "巴洛维亚村入口 - 冒险者被迷雾带入巴洛维亚，在村庄街头遇到两个孩子（罗莎瓦尔妲和索恩博尔德），他们请求冒险者进入死亡之屋救出婴儿弟弟沃尔特。",
+  "session": 1,
+  "party": [],
+  "npcs_status": {
+    "施特拉德·冯·扎洛维奇": "已察觉冒险者进入巴洛维亚，在鸦阁城堡观察",
+    "罗莎瓦尔妲": "10岁女孩，在村中街头哭泣，请求冒险者救弟弟",
+    "索恩博尔德": "罗莎瓦尔妲的哥哥，护在妹妹身前",
+    "沃尔特": "婴儿，被困在死亡之屋内",
+    "伊丽娜·考利安娜": "村长的养女，施特拉德的目标（尚未出场）",
+    "伊娃夫人": "维斯塔尼预言家（尚未出场）"
+  },
+  "dm_notes": {
+    "adventure": "施特拉德的诅咒 Curse of Strahd",
+    "starting_level": 1,
+    "recommended_players": "3-4",
+    "opening_hook": "死亡之屋 (附录B) - 两个孩子引导冒险者进入鬼屋",
+    "next_scene": "死亡之屋 - 玫瑰与荆棘",
+    "tarokka_reading": "待进行"
+  },
+  "session_log": [],
+  "npcs_discovered": ["罗莎瓦尔妲", "索恩博尔德"],
+  "locations_visited": ["巴洛维亚村入口"],
+  "rules_referenced": []
+}
