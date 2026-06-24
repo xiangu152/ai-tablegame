@@ -1,0 +1,108 @@
+{
+  "session_id": "ac686f3a638340e096fd5fb8b9f04e83",
+  "summary": "",
+  "context": [],
+  "reply_id": "bf78884280f04c2aa39e54e754625f8b",
+  "cur_iter": 0,
+  "permission_context": {
+    "mode": "default",
+    "working_directories": {},
+    "allow_rules": {},
+    "deny_rules": {
+      "Read": [
+        {
+          "tool_name": "Read",
+          "rule_content": "*adventure_text*",
+          "behavior": "deny",
+          "source": "game"
+        },
+        {
+          "tool_name": "Read",
+          "rule_content": "*adventure_chapters*",
+          "behavior": "deny",
+          "source": "game"
+        },
+        {
+          "tool_name": "Read",
+          "rule_content": "*game_memory*",
+          "behavior": "deny",
+          "source": "game"
+        },
+        {
+          "tool_name": "Read",
+          "rule_content": "*rulebook_index*",
+          "behavior": "deny",
+          "source": "game"
+        },
+        {
+          "tool_name": "Read",
+          "rule_content": "*/players/*",
+          "behavior": "deny",
+          "source": "game"
+        },
+        {
+          "tool_name": "Read",
+          "rule_content": "*/memory/*",
+          "behavior": "deny",
+          "source": "game"
+        },
+        {
+          "tool_name": "Read",
+          "rule_content": "!*/players/阿拉贡.json",
+          "behavior": "allow",
+          "source": "game"
+        },
+        {
+          "tool_name": "Read",
+          "rule_content": "!*/memory/阿拉贡/*",
+          "behavior": "allow",
+          "source": "game"
+        }
+      ],
+      "Write": [
+        {
+          "tool_name": "Write",
+          "rule_content": "*game_memory*",
+          "behavior": "deny",
+          "source": "game"
+        },
+        {
+          "tool_name": "Write",
+          "rule_content": "*/players/*",
+          "behavior": "deny",
+          "source": "game"
+        },
+        {
+          "tool_name": "Write",
+          "rule_content": "*/memory/*",
+          "behavior": "deny",
+          "source": "game"
+        },
+        {
+          "tool_name": "Write",
+          "rule_content": "!*/memory/阿拉贡/*",
+          "behavior": "allow",
+          "source": "game"
+        }
+      ],
+      "GameState": [
+        {
+          "tool_name": "GameState",
+          "rule_content": null,
+          "behavior": "deny",
+          "source": "game"
+        }
+      ]
+    },
+    "ask_rules": {}
+  },
+  "tool_context": {
+    "max_cache_files": 100,
+    "max_cache_bytes": 25000.0,
+    "read_file_cache": [],
+    "activated_groups": []
+  },
+  "tasks_context": {
+    "tasks": []
+  }
+}

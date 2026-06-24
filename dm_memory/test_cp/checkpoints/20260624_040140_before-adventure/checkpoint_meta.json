@@ -1,0 +1,10 @@
+{
+  "checkpoint_name": "20260624_040140_before-adventure",
+  "label": "before-adventure",
+  "game_name": "test_cp",
+  "created_at": "2026-06-24T04:01:40.282704+00:00",
+  "agent_count": 2,
+  "player_names": [
+    "阿拉贡"
+  ]
+}
