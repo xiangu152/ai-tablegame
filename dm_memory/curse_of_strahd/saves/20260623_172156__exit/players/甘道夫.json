@@ -1,0 +1,60 @@
+{
+  "name": "甘道夫",
+  "player_name": "小红",
+  "race": "高等精灵",
+  "class_": "法师",
+  "subclass": "",
+  "level": 3,
+  "background": "",
+  "alignment": "绝对中立",
+  "experience": 0,
+  "abilities": {
+    "str": 8,
+    "dex": 14,
+    "con": 12,
+    "int": 17,
+    "wis": 13,
+    "cha": 10
+  },
+  "combat": {
+    "hp_max": 17,
+    "hp_current": 17,
+    "hp_temp": 0,
+    "ac": 12,
+    "initiative": 2,
+    "speed": 30,
+    "hit_dice": "1d8",
+    "hit_dice_remaining": 1,
+    "death_saves": {
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "skill_proficiencies": [],
+  "expertise": [],
+  "saving_throw_proficiencies": [],
+  "weapons": [],
+  "armor": "",
+  "shield": false,
+  "items": [],
+  "gold": 0,
+  "spells": [
+    "魔法飞弹",
+    "法师护甲",
+    "燃烧之手",
+    "识破隐形"
+  ],
+  "spell_slots": {},
+  "spellcasting_ability": "",
+  "spell_save_dc": 10,
+  "features": [],
+  "traits": [],
+  "feats": [],
+  "languages": [],
+  "appearance": "",
+  "backstory": "来自银月城的学者，追寻古代知识的踪迹来到鸦阁魔域。",
+  "notes": "",
+  "portrait": "",
+  "created_at": "2026-06-23T17:12:00.120930+00:00",
+  "updated_at": "2026-06-23T17:12:00.120930+00:00"
+}

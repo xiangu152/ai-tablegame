@@ -8,6 +8,7 @@ PDF 团本解析器 - 使用 pdfplumber 深度解析团本 PDF。
 - 结构化信息提取（章节、NPC、怪物数据等）
 """
 
+import json
 import logging
 from pathlib import Path
 
@@ -170,65 +171,295 @@ class PDFParser:
 
     def extract_structured_info(self, pdf_data: dict) -> dict:
         """
-        使用 LLM 从 PDF 内容中提取结构化信息。
+        全本深度解析 — 分块遍历整个团本 PDF，提取完整的剧情/节奏/角色/地点/怪物。
 
-        Args:
-            pdf_data: extract_text() 的返回值
+        与旧版不同，此方法遍历整个 PDF（而非仅前 30K 字符），
+        每 ~20K 字符调用一次 LLM 提取结构化信息，最后合并去重。
 
         Returns:
             {
-                "npcs": [{"name": "", "description": "", "role": ""}, ...],
-                "locations": [{"name": "", "description": "", "features": []}, ...],
-                "monsters": [{"name": "", "cr": "", "description": ""}, ...],
-                "plot_hooks": ["", ...],
-                "magic_items": [{"name": "", "description": ""}, ...],
+                "plot_flow": [
+                    {"chapter": "", "summary": "", "events": [], "reveals": []}
+                ],
+                "pacing_guide": {
+                    "session_breakdown": [{"session": 1, "content": "", "climax": ""}],
+                    "difficulty_curve": "",
+                    "horror_beats": [],
+                    "recommended_rests": []
+                },
+                "npcs": [{"name": "", "description": "", "role": "", "first_appearance": ""}],
+                "locations": [{"name": "", "description": "", "features": [], "connected_npcs": []}],
+                "monsters": [{"name": "", "cr": "", "tactics": "", "first_appearance": ""}],
+                "magic_items": [{"name": "", "description": "", "location": ""}],
             }
         """
         if not self.llm_client:
-            logger.warning("No LLM client available, returning empty structured info")
-            return {
-                "npcs": [],
-                "locations": [],
-                "monsters": [],
-                "plot_hooks": [],
-                "magic_items": [],
-            }
+            logger.warning("No LLM client available")
+            return self._empty_result()
 
         full_text = pdf_data["full_text"]
-        # 截取前 30000 字符（覆盖了大部分关键信息）
-        sample_text = full_text[:30000]
+        chunks = self._split_text_chunks(full_text, chunk_size=20000)
+        logger.info(
+            "Deep extraction: %d chunks to process (%d chars total)",
+            len(chunks), len(full_text),
+        )
 
+        all_results = []
+        for i, chunk in enumerate(chunks):
+            logger.info("Extracting chunk %d/%d...", i + 1, len(chunks))
+            try:
+                result = self._extract_chunk(chunk, i + 1, len(chunks))
+                if result:
+                    all_results.append(result)
+            except Exception as e:
+                logger.warning("Chunk %d extraction failed: %s", i + 1, e)
+
+        # 合并所有 chunk 的结果
+        merged = self._merge_chunk_results(all_results)
+
+        # 额外提取剧情流程和节奏（基于合并后的数据 + 全文摘要）
         try:
-            result = self.llm_client.chat_json(
-                messages=(
-                    "请从以下 DND 冒险团本中提取结构化信息，"
-                    "以 JSON 格式返回。如果某项没有找到，返回空数组。\n\n"
-                    "JSON 格式:\n"
-                    '{\n'
-                    '  "npcs": [{"name": "名称", "description": "描述", "role": "盟友/敌人/中立"}],\n'
-                    '  "locations": [{"name": "地点名", "description": "描述", "features": ["特征1"]}],\n'
-                    '  "monsters": [{"name": "怪物名", "cr": "挑战等级", "description": "描述"}],\n'
-                    '  "plot_hooks": ["剧情钩子1", "剧情钩子2"],\n'
-                    '  "magic_items": [{"name": "物品名", "description": "描述"}]\n'
-                    "}\n\n"
-                    f"团本内容:\n{sample_text}"
-                ),
-                system="你是一个专业的 DND 数据分析师，擅长从团本文本中提取结构化信息。",
-                temperature=0.1,
-                max_tokens=8192,
-            )
-            return result
-
+            plot_and_pacing = self._extract_plot_flow_and_pacing(pdf_data, merged)
+            merged["plot_flow"] = plot_and_pacing.get("plot_flow", [])
+            merged["pacing_guide"] = plot_and_pacing.get("pacing_guide", {})
         except Exception as e:
-            logger.error("Failed to extract structured info: %s", e)
-            return {
-                "npcs": [],
-                "locations": [],
-                "monsters": [],
-                "plot_hooks": [],
-                "magic_items": [],
-                "_error": str(e),
-            }
+            logger.warning("Plot/pacing extraction failed: %s", e)
+            merged["plot_flow"] = []
+            merged["pacing_guide"] = {}
+
+        logger.info(
+            "Deep extraction complete: %d NPCs, %d locations, %d monsters, "
+            "%d magic items, %d plot chapters",
+            len(merged.get("npcs", [])),
+            len(merged.get("locations", [])),
+            len(merged.get("monsters", [])),
+            len(merged.get("magic_items", [])),
+            len(merged.get("plot_flow", [])),
+        )
+        return merged
+
+    def _split_text_chunks(
+        self, text: str, chunk_size: int = 20000
+    ) -> list[str]:
+        """将长文本按 chunk_size 分块，尽量在段落边界断开"""
+        chunks = []
+        start = 0
+        while start < len(text):
+            end = min(start + chunk_size, len(text))
+            if end < len(text):
+                # 在段落边界断开（双换行）
+                boundary = text.rfind("\n\n", start, end)
+                if boundary > start + chunk_size // 2:
+                    end = boundary + 2
+            chunks.append(text[start:end])
+            start = end
+        return chunks
+
+    def _extract_chunk(
+        self, chunk_text: str, chunk_idx: int, total_chunks: int, retries: int = 2
+    ) -> dict:
+        """从单个文本块中提取结构化信息，失败时自动重试"""
+        prompt = (
+            f"这是 DND 团本的第 {chunk_idx}/{total_chunks} 个片段。"
+            "提取其中出现的所有 NPC、地点、怪物、魔法物品。"
+            "只返回 JSON，不要任何解释。\n\n"
+            f"团本片段:\n{chunk_text[:15000]}"
+        )
+
+        for attempt in range(retries + 1):
+            try:
+                # 先用 chat() 获取原始文本，再解析 JSON
+                raw = self.llm_client.chat(
+                    messages=prompt,
+                    system=(
+                        "你是一个数据提取器。严格只返回以下 JSON 格式，不要 markdown 包裹:\n"
+                        '{"npcs":[{"name":"","description":"","role":"","first_appearance":""}],'
+                        '"locations":[{"name":"","description":"","features":[],"connected_npcs":[]}],'
+                        '"monsters":[{"name":"","cr":"","tactics":"","first_appearance":""}],'
+                        '"magic_items":[{"name":"","description":"","location":""}],'
+                        '"plot_events":[{"event":"","chapter_hint":"","triggers":[],"consequences":[]}],'
+                        '"pacing_notes":[{"note":"","type":""}]}'
+                        "\n所有数组字段如果没有对应内容则返回空数组 []。"
+                    ),
+                    temperature=0.1,
+                    max_tokens=4096,
+                )
+
+                if not raw or not raw.strip():
+                    logger.warning(
+                        "Chunk %d attempt %d: empty response, retrying...",
+                        chunk_idx, attempt + 1,
+                    )
+                    continue
+
+                # 清理非 JSON 内容
+                text = raw.strip()
+                if "{" not in text:
+                    logger.warning("Chunk %d: response has no JSON object", chunk_idx)
+                    continue
+
+                # 提取第一个完整 JSON 对象
+                start = text.find("{")
+                end = text.rfind("}") + 1
+                json_str = text[start:end]
+
+                return json.loads(json_str)
+
+            except Exception as e:
+                logger.warning(
+                    "Chunk %d attempt %d failed: %s",
+                    chunk_idx, attempt + 1, e,
+                )
+
+        # 全部重试失败，返回空结果
+        logger.error("Chunk %d: all %d attempts failed", chunk_idx, retries + 1)
+        return {
+            "npcs": [], "locations": [], "monsters": [],
+            "magic_items": [], "plot_events": [], "pacing_notes": [],
+        }
+
+    def _merge_chunk_results(self, all_results: list[dict]) -> dict:
+        """合并多个 chunk 的提取结果，按名称去重"""
+        merged = {
+            "npcs": [],
+            "locations": [],
+            "monsters": [],
+            "magic_items": [],
+        }
+
+        seen = {key: set() for key in merged}
+
+        for result in all_results:
+            for category in merged:
+                items = result.get(category, [])
+                if not isinstance(items, list):
+                    continue
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    name = item.get("name", "").strip()
+                    if name and name not in seen[category]:
+                        seen[category].add(name)
+                        merged[category].append(item)
+
+        return merged
+
+    def _extract_plot_flow_and_pacing(
+        self, pdf_data: dict, merged_info: dict
+    ) -> dict:
+        """提取章节级剧情流程和完整的节奏指南"""
+        full_text = pdf_data["full_text"]
+        pages = pdf_data.get("pages", [])
+
+        # 检测章节边界
+        chapter_boundaries = self._detect_chapters(pages)
+
+        # 构建章节概览文本
+        chapter_overview_parts = []
+        for ch in chapter_boundaries[:30]:  # 最多 30 章
+            chapter_overview_parts.append(
+                f"[{ch['title']} | p{ch['page_start']}-p{ch['page_end']}]\n"
+                f"{ch['text'][:3000]}\n"
+            )
+        chapter_overview = "\n---\n".join(chapter_overview_parts)
+
+        # 已知的 NPC 和地点（帮助 LLM 理解上下文）
+        known_npcs = [n.get("name", "") for n in merged_info.get("npcs", [])[:20]]
+        known_locations = [
+            l.get("name", "") for l in merged_info.get("locations", [])[:15]
+        ]
+
+        result = self.llm_client.chat_json(
+            messages=(
+                "请从以下 DND 团本中提取**剧情流程**和**节奏指南**。\n\n"
+                f"已知 NPC: {', '.join(known_npcs)}\n"
+                f"已知地点: {', '.join(known_locations)}\n\n"
+                "JSON 格式:\n"
+                '{\n'
+                '  "plot_flow": [\n'
+                '    {\n'
+                '      "chapter": "章节名",\n'
+                '      "page_range": "页码范围",\n'
+                '      "summary": "本章剧情摘要(100字)",\n'
+                '      "key_events": ["关键事件1", "关键事件2"],\n'
+                '      "npcs_introduced": ["新登场NPC"],\n'
+                '      "locations_visited": ["到访地点"],\n'
+                '      "player_goals": ["玩家目标"],\n'
+                '      "dm_notes": "DM注意事项"\n'
+                '    }\n'
+                '  ],\n'
+                '  "pacing_guide": {\n'
+                '    "campaign_overview": "整体节奏概述(200字)",\n'
+                '    "session_breakdown": [\n'
+                '      {"session": 1, "content": "内容", "expected_duration": "时长", '
+                '"climax": "高潮点", "rest_points": ["休息点"]}\n'
+                '    ],\n'
+                '    "difficulty_curve": "难度曲线描述",\n'
+                '    "horror_beats": [{"moment": "恐怖时刻", "build_up": "铺垫方式", '
+                '"payoff": "恐怖效果"}],\n'
+                '    "key_decision_points": ["关键决策点及后果"],\n'
+                '    "recommended_levels": "推荐等级范围"\n'
+                '  }\n'
+                "}\n\n"
+                "重要的剧情实体（如施特拉德、鸦阁城堡等）请在 plot_flow 中重点标注。\n\n"
+                f"团本章节概览:\n{chapter_overview[:25000]}"
+            ),
+            system=(
+                "你是一个 DND 团本剧情分析专家。请仔细分析团本的剧情结构，"
+                "提取每个章节的剧情流程和完整的 DM 节奏指南。"
+                "特别关注：恐怖氛围的铺垫、关键 NPC 的登场时机、战斗难度的递进、"
+                "玩家决策的分支点。"
+            ),
+            temperature=0.2,
+            max_tokens=8192,
+        )
+        return result
+
+    def _detect_chapters(self, pages: list[dict]) -> list[dict]:
+        """检测团本 PDF 中的章节边界"""
+        import re
+
+        chapters = []
+        current_chapter = None
+
+        # 匹配中文 "第X章" 或英文 "Chapter X"
+        chapter_pattern = re.compile(
+            r"(第[零一二三四五六七八九十百千\d]+章|Chapter\s+\d+)"
+        )
+
+        for page in pages:
+            text = page.get("text", "")
+            page_num = page.get("page_number", 0)
+
+            match = chapter_pattern.search(text[:500])
+            if match:
+                if current_chapter:
+                    chapters.append(current_chapter)
+                current_chapter = {
+                    "title": match.group(0).strip(),
+                    "page_start": page_num,
+                    "page_end": page_num,
+                    "text": text,
+                }
+            elif current_chapter:
+                current_chapter["page_end"] = page_num
+                current_chapter["text"] += "\n" + text
+
+        if current_chapter:
+            chapters.append(current_chapter)
+
+        logger.info("Detected %d chapters in PDF", len(chapters))
+        return chapters
+
+    def _empty_result(self) -> dict:
+        return {
+            "plot_flow": [],
+            "pacing_guide": {},
+            "npcs": [],
+            "locations": [],
+            "monsters": [],
+            "magic_items": [],
+        }
 
     def get_page_count(self, pdf_path: str) -> int:
         """快速获取 PDF 页数（不提取全文）"""

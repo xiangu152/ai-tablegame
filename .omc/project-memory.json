@@ -31,57 +31,213 @@
   "directoryMap": {},
   "hotPaths": [
     {
-      "path": "dm_agent/dm.py",
-      "accessCount": 5,
-      "lastAccessed": 1782232142451,
+      "path": "game_engine/web_ui.py",
+      "accessCount": 36,
+      "lastAccessed": 1782238375828,
       "type": "file"
     },
     {
-      "path": "dm_agent/__init__.py",
-      "accessCount": 4,
-      "lastAccessed": 1782231815375,
+      "path": "dm_memory/strahd_full/chat.log",
+      "accessCount": 33,
+      "lastAccessed": 1782240189008,
+      "type": "file"
+    },
+    {
+      "path": "game_engine/game_session.py",
+      "accessCount": 20,
+      "lastAccessed": 1782239724010,
+      "type": "file"
+    },
+    {
+      "path": "dm_agent/dm.py",
+      "accessCount": 19,
+      "lastAccessed": 1782236725231,
+      "type": "file"
+    },
+    {
+      "path": "agent_roles/PLAYER.md",
+      "accessCount": 18,
+      "lastAccessed": 1782240063605,
+      "type": "file"
+    },
+    {
+      "path": "game_engine/chat_room.py",
+      "accessCount": 16,
+      "lastAccessed": 1782236723559,
+      "type": "file"
+    },
+    {
+      "path": "agent_roles/DM.md",
+      "accessCount": 15,
+      "lastAccessed": 1782239719247,
+      "type": "file"
+    },
+    {
+      "path": "game_engine/__init__.py",
+      "accessCount": 11,
+      "lastAccessed": 1782238472598,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/strahd_full/game_memory.json",
+      "accessCount": 11,
+      "lastAccessed": 1782239960850,
       "type": "file"
     },
     {
       "path": "dm_agent/memory_generator.py",
-      "accessCount": 4,
-      "lastAccessed": 1782231954791,
+      "accessCount": 9,
+      "lastAccessed": 1782236633885,
       "type": "file"
     },
     {
-      "path": "dm_agent/rulebook_reader.py",
-      "accessCount": 4,
-      "lastAccessed": 1782232136803,
+      "path": "dm_agent/__init__.py",
+      "accessCount": 9,
+      "lastAccessed": 1782236734913,
       "type": "file"
     },
     {
-      "path": "config.yaml",
-      "accessCount": 3,
-      "lastAccessed": 1782231825999,
+      "path": "game_engine/agent_runner.py",
+      "accessCount": 9,
+      "lastAccessed": 1782238853429,
       "type": "file"
     },
     {
       "path": "dm_agent/pdf_parser.py",
-      "accessCount": 3,
-      "lastAccessed": 1782232137595,
+      "accessCount": 8,
+      "lastAccessed": 1782236633035,
       "type": "file"
     },
     {
-      "path": "dm_agent/config_loader.py",
-      "accessCount": 2,
-      "lastAccessed": 1782231815544,
+      "path": "dm_memory/strahd_full/players/阿拉贡.json",
+      "accessCount": 7,
+      "lastAccessed": 1782240063351,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/strahd_full/players/莱戈拉斯.json",
+      "accessCount": 7,
+      "lastAccessed": 1782240158497,
+      "type": "file"
+    },
+    {
+      "path": "dm_agent/rulebook_reader.py",
+      "accessCount": 6,
+      "lastAccessed": 1782236633284,
+      "type": "file"
+    },
+    {
+      "path": "game_engine/player_card.py",
+      "accessCount": 6,
+      "lastAccessed": 1782236723862,
       "type": "file"
     },
     {
       "path": "dm_agent/llm_client.py",
-      "accessCount": 2,
-      "lastAccessed": 1782231815907,
+      "accessCount": 6,
+      "lastAccessed": 1782236725009,
+      "type": "file"
+    },
+    {
+      "path": "run_dm.py",
+      "accessCount": 6,
+      "lastAccessed": 1782236729770,
+      "type": "file"
+    },
+    {
+      "path": "config.yaml",
+      "accessCount": 6,
+      "lastAccessed": 1782236730549,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/strahd_full/players/吉姆利.json",
+      "accessCount": 6,
+      "lastAccessed": 1782240188780,
+      "type": "file"
+    },
+    {
+      "path": "dm_agent/config_loader.py",
+      "accessCount": 5,
+      "lastAccessed": 1782236735209,
       "type": "file"
     },
     {
       "path": "dm_agent/checkpoint.py",
+      "accessCount": 5,
+      "lastAccessed": 1782236735471,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/barovia/adventure_text.json",
+      "accessCount": 5,
+      "lastAccessed": 1782238176998,
+      "type": "file"
+    },
+    {
+      "path": "run_player.py",
+      "accessCount": 5,
+      "lastAccessed": 1782239647466,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/strahd_full/players/甘道夫.json",
+      "accessCount": 5,
+      "lastAccessed": 1782240098513,
+      "type": "file"
+    },
+    {
+      "path": "game_engine/dice.py",
+      "accessCount": 4,
+      "lastAccessed": 1782236724128,
+      "type": "file"
+    },
+    {
+      "path": "launcher.py",
+      "accessCount": 4,
+      "lastAccessed": 1782236729524,
+      "type": "file"
+    },
+    {
+      "path": "CLAUDE.md",
+      "accessCount": 4,
+      "lastAccessed": 1782236730319,
+      "type": "file"
+    },
+    {
+      "path": "requirements.txt",
+      "accessCount": 4,
+      "lastAccessed": 1782236730815,
+      "type": "file"
+    },
+    {
+      "path": "dm_agent/knowledge_index.py",
+      "accessCount": 3,
+      "lastAccessed": 1782236639309,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/barovia/game_memory.json",
+      "accessCount": 3,
+      "lastAccessed": 1782238182879,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/strahd_full/session.json",
+      "accessCount": 3,
+      "lastAccessed": 1782238530631,
+      "type": "file"
+    },
+    {
+      "path": ".game_config.json",
       "accessCount": 2,
-      "lastAccessed": 1782231817129,
+      "lastAccessed": 1782238026137,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/barovia/chat.log",
+      "accessCount": 2,
+      "lastAccessed": 1782238101721,
       "type": "file"
     },
     {
@@ -91,9 +247,51 @@
       "type": "file"
     },
     {
-      "path": "requirements.txt",
+      "path": "dm_memory/curse_of_strahd/game_memory.json",
       "accessCount": 1,
-      "lastAccessed": 1782231955890,
+      "lastAccessed": 1782236642090,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/curse_of_strahd/rulebook_index.json",
+      "accessCount": 1,
+      "lastAccessed": 1782236642935,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/curse_of_strahd/players/阿拉贡.json",
+      "accessCount": 1,
+      "lastAccessed": 1782236643240,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/barovia/rulebook_index.json",
+      "accessCount": 1,
+      "lastAccessed": 1782237949424,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/barovia/session.json",
+      "accessCount": 1,
+      "lastAccessed": 1782238183134,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/strahd_full/adventure_text.json",
+      "accessCount": 1,
+      "lastAccessed": 1782238259945,
+      "type": "file"
+    },
+    {
+      "path": "dnd_data/rule_book/markdown/玩家手册.md",
+      "accessCount": 1,
+      "lastAccessed": 1782238406977,
+      "type": "file"
+    },
+    {
+      "path": "dm_memory/strahd_full/rulebook_index.json",
+      "accessCount": 1,
+      "lastAccessed": 1782238524693,
       "type": "file"
     }
   ],

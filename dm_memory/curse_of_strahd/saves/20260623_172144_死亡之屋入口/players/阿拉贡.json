@@ -1,0 +1,66 @@
+{
+  "name": "阿拉贡",
+  "player_name": "小明",
+  "race": "人类",
+  "class_": "战士",
+  "subclass": "",
+  "level": 3,
+  "background": "",
+  "alignment": "绝对中立",
+  "experience": 0,
+  "abilities": {
+    "str": 16,
+    "dex": 14,
+    "con": 15,
+    "int": 10,
+    "wis": 12,
+    "cha": 8
+  },
+  "combat": {
+    "hp_max": 28,
+    "hp_current": 25,
+    "hp_temp": 0,
+    "ac": 18,
+    "initiative": 2,
+    "speed": 30,
+    "hit_dice": "1d8",
+    "hit_dice_remaining": 1,
+    "death_saves": {
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "skill_proficiencies": [
+    "运动",
+    "威吓",
+    "生存",
+    "察觉"
+  ],
+  "expertise": [],
+  "saving_throw_proficiencies": [],
+  "weapons": [
+    {
+      "name": "长剑",
+      "attack": "1d20+5",
+      "damage": "1d8+3"
+    }
+  ],
+  "armor": "",
+  "shield": false,
+  "items": [],
+  "gold": 0,
+  "spells": [],
+  "spell_slots": {},
+  "spellcasting_ability": "",
+  "spell_save_dc": 10,
+  "features": [],
+  "traits": [],
+  "feats": [],
+  "languages": [],
+  "appearance": "",
+  "backstory": "来自北方王国的流浪骑士，为寻找失踪的妹妹来到巴洛维亚。",
+  "notes": "",
+  "portrait": "",
+  "created_at": "2026-06-23T17:12:00.120837+00:00",
+  "updated_at": "2026-06-23T17:21:31.878490+00:00"
+}

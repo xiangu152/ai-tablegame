@@ -1,0 +1,65 @@
+{
+  "game_name": "strahd_full",
+  "created_at": "2026-06-23T18:10:52.627074+00:00",
+  "prepared_at": "2026-06-23T18:10:52.627256+00:00",
+  "rulebook_path": "/Users/xiangu/Codes/agent/ai-tablegame/dnd_data/rule_book/markdown",
+  "adventure_pdf_path": "/Users/xiangu/Codes/agent/ai-tablegame/dnd_data/game_book/龙与地下城 5eDnD_施特拉德的诅咒CoS_中译v1.3.pdf",
+  "adventure_pages": 246,
+  "rulebook_files": 36,
+  "rulebook_h2_count": 1847,
+  "dm_notes": {},
+  "session_log": [
+    {
+      "session": 1,
+      "started_at": "2026-06-23T18:11:50.425785+00:00",
+      "scene": "冒险者被迷雾拖入巴洛维亚，抵达巴洛维亚村",
+      "description": "迷雾消散后，冒险者发现自己身处巴洛维亚村的街道上。鸦阁城堡高踞山崖，村庄寂静而恐惧。"
+    },
+    {
+      "session": 1,
+      "event": "party_assembled",
+      "timestamp": "2026-06-24T02:17:00+00:00",
+      "description": "四位冒险者在血鸦旅舍集结：阿拉贡（人类圣武士）、甘道夫（人类法师）、莱戈拉斯（木精灵游侠）、吉姆利（山地矮人战士）。酒馆老板伊索告知他们前往村长家见考利安·英迪洛维奇——他的女儿伊丽娜需要帮助。"
+    }
+  ],
+  "npcs_discovered": [],
+  "locations_visited": [],
+  "rules_referenced": [],
+  "current_scene": "血鸦旅舍——酒馆老板伊索指引冒险者前往村长家",
+  "current_location": "巴洛维亚村·血鸦旅舍",
+  "party": [
+    {
+      "name": "阿拉贡",
+      "class_": "圣武士",
+      "race": "人类",
+      "role": "次级坦克/治疗者/面谈者"
+    },
+    {
+      "name": "甘道夫",
+      "class_": "法师",
+      "race": "人类",
+      "role": "奥术施法者/知识检定"
+    },
+    {
+      "name": "莱戈拉斯",
+      "class_": "游侠",
+      "race": "木精灵",
+      "role": "远程输出/侦察"
+    },
+    {
+      "name": "吉姆利",
+      "class_": "战士",
+      "race": "山地矮人",
+      "role": "前排坦克/近战输出"
+    }
+  ],
+  "session": 1,
+  "npcs_status": {
+    "施特拉德·冯·扎洛维奇": "在鸦阁城堡中，已知晓冒险者抵达，正通过密探观察",
+    "伊丽娜·考利安娜": "在村长家中，近期受到不明威胁，被施特拉德觊觎",
+    "考利安·英迪洛维奇": "巴洛维亚村村长，伊丽娜的养父，忧心忡忡",
+    "伊索（血鸦旅舍老板）": "刚与冒险者交谈，指引他们前往村长家",
+    "伊娃夫人": "在维斯塔尼营地（区域G），等待为冒险者进行塔罗卡牌占卜",
+    "鲁道夫·范·里希腾": "在瓦拉吉镇，化名里希特恩，暗中研究对付施特拉德的方法"
+  }
+}

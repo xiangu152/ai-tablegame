@@ -1,0 +1,15 @@
+{
+  "game_name": "curse_of_strahd",
+  "created_at": "2026-06-23T17:12:00.119697+00:00",
+  "prepared_at": "2026-06-23T17:12:00.120043+00:00",
+  "rulebook_path": "/Users/xiangu/Codes/agent/ai-tablegame/dnd_data/rule_book/markdown",
+  "adventure_pdf_path": "/Users/xiangu/Codes/agent/ai-tablegame/dnd_data/game_book/龙与地下城 5eDnD_施特拉德的诅咒CoS_中译v1.3.pdf",
+  "adventure_pages": 246,
+  "rulebook_files": 36,
+  "rulebook_h2_count": 1847,
+  "dm_notes": {},
+  "session_log": [],
+  "npcs_discovered": [],
+  "locations_visited": [],
+  "rules_referenced": []
+}

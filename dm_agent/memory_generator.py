@@ -36,14 +36,19 @@ MEMORY_SCHEMA_TEMPLATE = {
     "npcs_factions": [],
     "plot_locations": {
         "main_quest": "",
+        "chapters": [],
         "overview": [],
         "locations": [],
         "key_events": [],
     },
     "monsters_loot": [],
     "pacing_guide": {
-        "session_structure": "",
-        "key_moments": [],
+        "campaign_overview": "",
+        "session_breakdown": [],
+        "difficulty_curve": "",
+        "horror_beats": [],
+        "key_decision_points": [],
+        "recommended_levels": "",
     },
     "details_dir": "details/",
     "detail_files": {
@@ -212,45 +217,76 @@ class MemoryGenerator:
             )
 
     def _merge_pdf_data(self, memory: dict, pdf_data: dict):
-        """将 PDF 团本数据合并到 memory 结构中"""
-        # 提取结构化信息
+        """将 PDF 团本数据合并到 memory 结构中 — 包含剧情流程和节奏指南"""
         structured = pdf_data.get("structured_info", {})
         if not structured:
             return
 
-        # NPC
+        # === NPC（含出场信息） ===
         for npc in structured.get("npcs", []):
             memory["npcs_factions"].append({
                 "name": npc.get("name", ""),
                 "description": npc.get("description", ""),
                 "role": npc.get("role", "未知"),
+                "first_appearance": npc.get("first_appearance", ""),
                 "source": "adventure_pdf",
             })
 
-        # 地点
+        # === 地点（含关联 NPC） ===
         for loc in structured.get("locations", []):
-            memory["plot_locations"]["locations"].append(loc)
+            memory["plot_locations"]["locations"].append({
+                "name": loc.get("name", ""),
+                "description": loc.get("description", ""),
+                "features": loc.get("features", []),
+                "connected_npcs": loc.get("connected_npcs", []),
+                "source": "adventure_pdf",
+            })
 
-        # 怪物
+        # === 怪物（含战术） ===
         for mon in structured.get("monsters", []):
             memory["monsters_loot"].append({
                 "name": mon.get("name", ""),
                 "cr": mon.get("cr", ""),
+                "tactics": mon.get("tactics", ""),
+                "first_appearance": mon.get("first_appearance", ""),
                 "description": mon.get("description", ""),
                 "source": "adventure_pdf",
             })
 
-        # 剧情钩子
-        memory["plot_locations"]["key_events"] = structured.get("plot_hooks", [])
-
-        # 魔法物品
+        # === 魔法物品（含位置） ===
         for item in structured.get("magic_items", []):
             memory["monsters_loot"].append({
                 "name": item.get("name", ""),
                 "description": item.get("description", ""),
+                "location": item.get("location", ""),
                 "type": "magic_item",
                 "source": "adventure_pdf",
             })
+
+        # === 剧情流程 ===
+        plot_flow = structured.get("plot_flow", [])
+        if plot_flow:
+            memory["plot_locations"]["main_quest"] = (
+                plot_flow[0].get("summary", "") if plot_flow else ""
+            )
+            memory["plot_locations"]["chapters"] = plot_flow
+            # 从剧情流程中提取关键事件
+            all_events = []
+            for ch in plot_flow:
+                all_events.extend(ch.get("key_events", []))
+            memory["plot_locations"]["key_events"] = all_events
+
+        # === 节奏指南 ===
+        pacing = structured.get("pacing_guide", {})
+        if pacing and isinstance(pacing, dict):
+            memory["pacing_guide"] = {
+                "campaign_overview": pacing.get("campaign_overview", ""),
+                "session_breakdown": pacing.get("session_breakdown", []),
+                "difficulty_curve": pacing.get("difficulty_curve", ""),
+                "horror_beats": pacing.get("horror_beats", []),
+                "key_decision_points": pacing.get("key_decision_points", []),
+                "recommended_levels": pacing.get("recommended_levels", ""),
+            }
 
     def _generate_game_summary(
         self,

@@ -172,7 +172,7 @@ class RulebookReader:
         return chunks
 
     def _make_chunk(
-        self, heading: str, chapter: str, content: str, max_size: int = 8000
+        self, heading: str, chapter: str, content: str, max_size: int = 16000
     ) -> dict:
         """创建标准化的 chunk 字典"""
         truncated = content[:max_size]
