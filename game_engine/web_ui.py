@@ -158,35 +158,29 @@ _agents_lock = Lock()
 _agent_running: dict[str, bool] = {}
 
 
-def _agent_scheduler(game_name: str, player_names: list[str]):
-    """后台线程：DM 准备 → Player 介绍 → DM 协商角色 → DM 存档"""
-    from game_engine.agent_runner import dm_prepare, dm_negotiate_characters, dm_finalize, pl_introduce
+def _agent_scheduler(game_name: str, player_names: list[str], max_rounds: int = 20):
+    """多轮对话循环。Round 1 = DM首次（读团本+开场），后续 = DM读聊天+回应。"""
+    from game_engine.agent_runner import dm_first_turn, dm_game_turn, pl_game_turn
 
-    logger.info("Agent scheduler: %s (DM + %d players)", game_name, len(player_names))
-
+    logger.info("Agent loop: %s (DM + %d players, max %d rounds)", game_name, len(player_names), max_rounds)
+    r = 0
     try:
-        # Phase 1: DM 读团本 + 思考室 + 大厅开场
-        logger.info("Phase 1/4: DM prepare")
-        dm_prepare(game_name)
+        for r in range(1, max_rounds + 1):
+            logger.info("Round %d/%d", r, max_rounds)
 
-        # Phase 2: Player 介绍自己
-        logger.info("Phase 2/4: Players introduce")
-        for pname in player_names:
-            pl_introduce(game_name, pname)
+            if r == 1:
+                dm_first_turn(game_name)  # 读团本 + 思考室 + 大厅开场
+            else:
+                dm_game_turn(game_name)   # 读聊天 + 回应玩家
 
-        # Phase 3: DM 与 Player 协商创建角色
-        logger.info("Phase 3/4: DM negotiate characters")
-        dm_negotiate_characters(game_name)
-
-        # Phase 4: DM 完成并存档
-        logger.info("Phase 4/4: DM finalize + save")
-        dm_finalize(game_name)
+            for pname in player_names:
+                pl_game_turn(game_name, pname)
 
     except Exception as e:
-        logger.error("Agent scheduler failed: %s", e)
+        logger.error("Agent loop failed: %s", e)
     finally:
         _agent_running[game_name] = False
-        logger.info("Agent scheduler finished: %s", game_name)
+        logger.info("Agent loop finished: %s after %d rounds", game_name, r)
 
 
 def start_agents(game_name: str, player_names: list[str]):

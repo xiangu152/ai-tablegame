@@ -11,7 +11,13 @@ from .dice import Dice
 from .player_card import PlayerCard
 from .chat_room import ChatRoom
 from .game_session import GameSession
-from .agent_runner import dm_prepare, dm_negotiate_characters, dm_finalize, pl_introduce, pl_act
+try:
+    from .agent_runner import dm_first_turn, dm_game_turn, pl_game_turn, run_game_round
+    _agent_runner_available = True
+except ImportError:
+    _agent_runner_available = False
+    dm_first_turn = dm_game_turn = pl_game_turn = run_game_round = None
 
-__all__ = ["Dice", "PlayerCard", "ChatRoom", "GameSession",
-           "dm_prepare", "dm_negotiate_characters", "dm_finalize", "pl_introduce", "pl_act"]
+__all__ = ["Dice", "PlayerCard", "ChatRoom", "GameSession"]
+if _agent_runner_available:
+    __all__.extend(["dm_first_turn", "dm_game_turn", "pl_game_turn", "run_game_round"])

@@ -40,81 +40,24 @@ def _claude(prompt: str, session: str = "", timeout: int = 180) -> str:
 
 
 # ============================================================
-# DM actions
+# DM turns
 # ============================================================
 
-def dm_prepare(game_name: str) -> str:
-    """DM 准备：读团本 → 思考室分析 → 大厅开场叙事。"""
+def dm_first_turn(game_name: str) -> str:
+    """DM 第一轮：读团本 → 思考室 → 大厅开场。后续由 dm_game_turn 处理。"""
     return _claude(
         f"You are the Dungeon Master for DND game '{game_name}'. "
-        f"Read agent_roles/DM.md to learn your protocol. "
-        f"Then: 1) read the adventure from dm_memory/{game_name}/adventure_text.json "
-        f"(just the first few pages), "
-        f"2) post your analysis to 'DM-思考室' room, "
-        f"3) post opening narration to '酒馆大厅' room. "
-        f"Use python3 -c to call GameSession. Do all steps now.",
-        session="dm",
-    )
-
-
-def dm_negotiate_characters(game_name: str) -> str:
-    """DM 与 player 协商角色。"""
-    return _claude(
-        f"DND game '{game_name}'. You are the DM. "
-        f"Check for new messages in 酒馆大厅. "
-        f"If players are introducing themselves, discuss characters with them. "
-        f"Once roles are decided, create character sheets using python3 -c "
-        f"with GameSession.cards.create(). "
-        f"Characters need: name, race, class_, level=1, abilities (str/dex/con/int/wis/cha), "
-        f"combat (hp_max, hp_current, ac, initiative, speed), weapons or spells, backstory. "
-        f"Create 4 characters. Do it now.",
-        session="dm",
-    )
-
-
-def dm_finalize(game_name: str) -> str:
-    """DM 完成准备：开始冒险 + 存档。"""
-    return _claude(
-        f"DND game '{game_name}'. You are the DM. "
-        f"Characters should be created by now. "
-        f"1) Announce in 酒馆大厅 that the adventure begins. "
-        f"2) Save the game using GameSession.save('角色创建完成'). "
-        f"Do it now.",
+        f"Read agent_roles/DM.md. Read the adventure from "
+        f"dm_memory/{game_name}/adventure_text.json (first pages). "
+        f"Post your analysis to 'DM-思考室'. "
+        f"Post opening narration to '酒馆大厅'. "
+        f"Describe the world. Never suggest classes. Use GameSession via python3 -c.",
         session="dm",
     )
 
 
 # ============================================================
-# Player actions
-# ============================================================
-
-def pl_introduce(game_name: str, player_name: str) -> str:
-    """Player 加入游戏，介绍自己。"""
-    return _claude(
-        f"You are player '{player_name}' in DND game '{game_name}'. "
-        f"Read agent_roles/PLAYER.md to learn your role. "
-        f"Then join the 酒馆大厅 and introduce yourself. "
-        f"Describe what kind of character you'd like to play. "
-        f"You may read dnd_data/rule_book/markdown/ for rules. "
-        f"Do NOT read dm_memory/{game_name}/adventure_text.json (DM only). "
-        f"Use python3 -c with GameSession to login and speak.",
-        session=f"pl_{player_name}",
-    )
-
-
-def pl_act(game_name: str, player_name: str) -> str:
-    """Player 行动。"""
-    return _claude(
-        f"DND game '{game_name}'. You are '{player_name}'. "
-        f"Check 酒馆大厅 for new messages. Respond in character. "
-        f"You may read dnd_data/rule_book/markdown/ for rules. "
-        f"Do NOT read adventure_text.json.",
-        session=f"pl_{player_name}",
-    )
-
-
-# ============================================================
-# Game loop
+# Game loop (multi-round, no phases)
 # ============================================================
 
 def dm_game_turn(game_name: str) -> str:

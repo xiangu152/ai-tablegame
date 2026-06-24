@@ -1,0 +1,205 @@
+{
+  "name": "索林",
+  "player_name": "索林",
+  "race": "丘陵矮人",
+  "class_": "牧师",
+  "subclass": "生命领域",
+  "level": 1,
+  "background": "侍僧",
+  "alignment": "守序善良",
+  "experience": 0,
+  "abilities": {
+    "str": 13,
+    "dex": 10,
+    "con": 16,
+    "int": 8,
+    "wis": 16,
+    "cha": 12
+  },
+  "combat": {
+    "hp_max": 12,
+    "hp_current": 12,
+    "hp_temp": 0,
+    "ac": 18,
+    "initiative": 0,
+    "speed": 25,
+    "hit_dice": "1d8",
+    "hit_dice_remaining": 1,
+    "death_saves": {
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "skill_proficiencies": [
+    "医药",
+    "宗教",
+    "洞悉",
+    "说服"
+  ],
+  "expertise": [],
+  "saving_throw_proficiencies": [
+    "感知",
+    "魅力"
+  ],
+  "weapons": [
+    {
+      "name": "战锤",
+      "attack_bonus": 3,
+      "damage": "1d8+1",
+      "damage_type": "钝击",
+      "range": "近战",
+      "properties": [
+        "versatile (1d10)"
+      ]
+    },
+    {
+      "name": "轻弩",
+      "attack_bonus": 2,
+      "damage": "1d8",
+      "damage_type": "穿刺",
+      "range": "80/320",
+      "properties": [
+        "双手",
+        "弹药",
+        "装填"
+      ]
+    }
+  ],
+  "armor": "链甲",
+  "shield": true,
+  "items": [
+    "圣徽（摩拉丁之锤）",
+    "盾牌",
+    "牧师包",
+    "治疗药水（2瓶）",
+    "圣水（1瓶）",
+    "熏香",
+    "圣典",
+    "弩矢（20支）"
+  ],
+  "gold": 25,
+  "spells": [
+    {
+      "name": "圣光术",
+      "level": 0,
+      "school": "塑能",
+      "casting_time": "1动作",
+      "range": "触及",
+      "components": "V,M",
+      "duration": "1小时",
+      "description": "使触及物体发出20尺明亮光照，额外20尺微光。"
+    },
+    {
+      "name": "神导术",
+      "level": 0,
+      "school": "预言",
+      "casting_time": "1动作",
+      "range": "触及",
+      "components": "V,S",
+      "duration": "专注，1分钟",
+      "description": "目标下一次属性检定时可额外投1d4。"
+    },
+    {
+      "name": "圣火术",
+      "level": 0,
+      "school": "塑能",
+      "casting_time": "1动作",
+      "range": "60尺",
+      "components": "V,S",
+      "duration": "立即",
+      "description": "目标需敏捷豁免，失败受1d8光耀伤害。"
+    },
+    {
+      "name": "疗伤术",
+      "level": 1,
+      "school": "塑能",
+      "casting_time": "1动作",
+      "range": "触及",
+      "components": "V,S",
+      "duration": "立即",
+      "description": "恢复触及生物1d8+3生命值。"
+    },
+    {
+      "name": "祝福术",
+      "level": 1,
+      "school": "惑控",
+      "casting_time": "1动作",
+      "range": "30尺",
+      "components": "V,S,M",
+      "duration": "专注，1分钟",
+      "description": "最多3个生物攻击检定和豁免检定+1d4。"
+    },
+    {
+      "name": "治愈真言",
+      "level": 1,
+      "school": "塑能",
+      "casting_time": "1附赠动作",
+      "range": "60尺",
+      "components": "V",
+      "duration": "立即",
+      "description": "60尺内可见生物恢复1d4+3生命值（附赠动作）。"
+    },
+    {
+      "name": "命令术",
+      "level": 1,
+      "school": "惑控",
+      "casting_time": "1动作",
+      "range": "60尺",
+      "components": "V",
+      "duration": "1轮",
+      "description": "命令目标执行一个单词命令（如逃跑、倒地），需感知豁免。"
+    },
+    {
+      "name": "曳光弹",
+      "level": 1,
+      "school": "塑能",
+      "casting_time": "1动作",
+      "range": "120尺",
+      "components": "V,S",
+      "duration": "专注，1轮",
+      "description": "远程法术攻击，命中造成4d6光耀伤害，下一轮攻击检定优势。"
+    },
+    {
+      "name": "防护善恶",
+      "level": 1,
+      "school": "防护",
+      "casting_time": "1动作",
+      "range": "触及",
+      "components": "V,S,M",
+      "duration": "专注，10分钟",
+      "description": "保护生物免受异怪、天界、元素、精类、魔族、不死生物的影响。"
+    }
+  ],
+  "spell_slots": {
+    "1st": {
+      "total": 2,
+      "used": 0
+    }
+  },
+  "spellcasting_ability": "感知",
+  "spell_save_dc": 13,
+  "features": [
+    "生命门徒：治疗法术额外恢复2+法术等级的生命值",
+    "引导神力（1/休）：维持生机——引导神力治疗30尺内最多5个生物共10HP",
+    "重甲熟练"
+  ],
+  "traits": [
+    "黑暗视觉60尺",
+    "矮人韧性：对抗毒素豁免优势，毒素伤害抗性",
+    "石中智慧：进行与石制品相关的历史检定时，获得双倍熟练加值",
+    "矮人体魄：每级+1HP最大值"
+  ],
+  "feats": [],
+  "languages": [
+    "通用语",
+    "矮人语",
+    "天界语"
+  ],
+  "appearance": "矮小结实的身材，浓密的红棕色胡须编成两股，辫梢系着铜环。身穿擦得锃亮的链甲，左手持一面上刻铁砧与锤的钢盾。褐色的眼睛闪烁着虔诚与坚定的光芒。",
+  "backstory": "索林·铜盾，来自北方山脉的丘陵矮人。他在摩拉丁的神庙中长大，从小便被教导——锻造之神不仅铸造武器，更是生命的守护者。多年的侍僧生涯让他精通医术与神圣魔法。当不断蔓延的黑暗开始吞噬边境村庄的消息传来，索林主动踏上了对抗邪恶的旅途。迷雾将他带到巴洛维亚——一片连矮人的坚毅之心都会颤抖的诅咒之地。他坚信，摩拉丁的圣光将照亮这片黑暗。",
+  "notes": "",
+  "portrait": "",
+  "owner": "索林",
+  "created_at": "2026-06-24T02:40:35.433970+00:00",
+  "updated_at": "2026-06-24T02:40:50.451440+00:00"
+}

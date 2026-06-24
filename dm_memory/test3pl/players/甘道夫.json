@@ -1,0 +1,202 @@
+{
+  "name": "甘道夫",
+  "player_name": "甘道夫",
+  "race": "人类",
+  "class_": "法师",
+  "subclass": "",
+  "level": 1,
+  "background": "智者",
+  "alignment": "守序善良",
+  "experience": 0,
+  "abilities": {
+    "str": 9,
+    "dex": 14,
+    "con": 15,
+    "int": 16,
+    "wis": 13,
+    "cha": 11
+  },
+  "combat": {
+    "hp_max": 8,
+    "hp_current": 8,
+    "hp_temp": 0,
+    "ac": 12,
+    "initiative": 2,
+    "speed": 30,
+    "hit_dice": "1d6",
+    "hit_dice_remaining": 1,
+    "death_saves": {
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "skill_proficiencies": [
+    "奥秘",
+    "历史",
+    "调查",
+    "察觉"
+  ],
+  "expertise": [],
+  "saving_throw_proficiencies": [
+    "智力",
+    "感知"
+  ],
+  "weapons": [
+    {
+      "name": "长杖（法器）",
+      "attack_bonus": 5,
+      "damage": "1d6+3",
+      "damage_type": "钝击",
+      "range": "近战",
+      "properties": [
+        "法器",
+        "奥术法器"
+      ]
+    },
+    {
+      "name": "匕首",
+      "attack_bonus": 4,
+      "damage": "1d4+2",
+      "damage_type": "穿刺",
+      "range": "20/60",
+      "properties": [
+        "灵巧",
+        "轻型",
+        "投掷"
+      ]
+    }
+  ],
+  "armor": "无",
+  "shield": false,
+  "items": [
+    "法术书",
+    "材料包",
+    "探索者背包",
+    "卷轴匣",
+    "墨水和羽毛笔",
+    "羊皮纸（5张）",
+    "施法材料（蝙蝠粪、硫磺）"
+  ],
+  "gold": 20,
+  "spells": [
+    {
+      "name": "火焰箭",
+      "level": 0,
+      "school": "塑能",
+      "casting_time": "1动作",
+      "range": "120尺",
+      "components": "V,S",
+      "duration": "立即",
+      "description": "对目标进行一次远程法术攻击，命中造成1d10火焰伤害。"
+    },
+    {
+      "name": "光亮术",
+      "level": 0,
+      "school": "塑能",
+      "casting_time": "1动作",
+      "range": "触及",
+      "components": "V,M",
+      "duration": "1小时",
+      "description": "使触及物体发出20尺明亮光照，额外20尺微光光照。"
+    },
+    {
+      "name": "法师之手",
+      "level": 0,
+      "school": "咒法",
+      "casting_time": "1动作",
+      "range": "30尺",
+      "components": "V,S",
+      "duration": "1分钟",
+      "description": "创造一只幽灵般的漂浮之手，可操控物体、开门、取物。"
+    },
+    {
+      "name": "魔法飞弹",
+      "level": 1,
+      "school": "塑能",
+      "casting_time": "1动作",
+      "range": "120尺",
+      "components": "V,S",
+      "duration": "立即",
+      "description": "创造三枚魔法飞镖，每枚自动命中造成1d4+1力场伤害。"
+    },
+    {
+      "name": "燃烧之手",
+      "level": 1,
+      "school": "塑能",
+      "casting_time": "1动作",
+      "range": "自身（15尺锥形）",
+      "components": "V,S",
+      "duration": "立即",
+      "description": "15尺锥形范围内每生物需敏捷豁免，失败受3d6火焰伤害，成功减半。"
+    },
+    {
+      "name": "法师护甲",
+      "level": 1,
+      "school": "防护",
+      "casting_time": "1动作",
+      "range": "触及",
+      "components": "V,S,M",
+      "duration": "8小时",
+      "description": "目标AC变为13+敏捷调整值（持续8小时，无需专注）。"
+    },
+    {
+      "name": "护盾术",
+      "level": 1,
+      "school": "防护",
+      "casting_time": "1反应",
+      "range": "自身",
+      "components": "V,S",
+      "duration": "1轮",
+      "description": "反应施放，AC+5持续一回合，并免疫魔法飞弹。"
+    },
+    {
+      "name": "睡眠术",
+      "level": 1,
+      "school": "惑控",
+      "casting_time": "1动作",
+      "range": "90尺",
+      "components": "V,S,M",
+      "duration": "1分钟",
+      "description": "使20尺半径内5d8生命值的生物陷入睡眠（由低生命值开始）。"
+    },
+    {
+      "name": "侦测魔法",
+      "level": 1,
+      "school": "预言",
+      "casting_time": "1动作",
+      "range": "自身",
+      "components": "V,S",
+      "duration": "专注，10分钟",
+      "description": "感知30尺内魔法存在和魔法学派。"
+    }
+  ],
+  "spell_slots": {
+    "1st": {
+      "total": 2,
+      "used": 0
+    }
+  },
+  "spellcasting_ability": "智力",
+  "spell_save_dc": 13,
+  "features": [
+    "奥术回想：短休恢复一个法术位（1级法术位1个）",
+    "仪式施法：可把法术书中带有仪式标签的法术作为仪式施放"
+  ],
+  "traits": [
+    "博学多才：总能回忆起有关远古传说、魔法奥秘和历史的知识"
+  ],
+  "feats": [],
+  "languages": [
+    "通用语",
+    "精灵语",
+    "龙语",
+    "深渊语"
+  ],
+  "appearance": "身披灰色长袍，手持橡木长杖，宽檐尖帽下是布满岁月沟壑却神采奕奕的面容。银白长须垂至胸前，一双深邃的眼睛仿佛能看透迷雾。",
+  "backstory": "甘道夫，灰袍法师。在漫长的岁月中，他游历诸界、研习奥术，致力于对抗黑暗势力。火焰与光芒是他最熟悉的伙伴，远古的知识赋予他洞察邪恶的能力。当迷雾将他拖入巴洛维亚时，他立刻感受到了这片土地深沉的痛苦——一种比普通黑暗更为古老的邪恶。在这里，他必须依靠新结识的冒险者同伴，用智慧与魔法带领他们穿越被诅咒的恐惧领域。",
+  "notes": "",
+  "portrait": "",
+  "owner": "甘道夫",
+  "created_at": "2026-06-24T02:40:17.926421+00:00",
+  "updated_at": "2026-06-24T02:40:50.450803+00:00"
+}

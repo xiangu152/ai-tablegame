@@ -1,0 +1,115 @@
+{
+  "name": "阿拉贡",
+  "player_name": "阿拉贡",
+  "race": "人类",
+  "class_": "游侠",
+  "subclass": "",
+  "level": 1,
+  "background": "化外之民",
+  "alignment": "中立善良",
+  "experience": 0,
+  "abilities": {
+    "str": 15,
+    "dex": 16,
+    "con": 14,
+    "int": 11,
+    "wis": 13,
+    "cha": 9
+  },
+  "combat": {
+    "hp_max": 12,
+    "hp_current": 12,
+    "hp_temp": 0,
+    "ac": 14,
+    "initiative": 3,
+    "speed": 30,
+    "hit_dice": "1d10",
+    "hit_dice_remaining": 1,
+    "death_saves": {
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "skill_proficiencies": [
+    "察觉",
+    "生存",
+    "隐匿",
+    "自然",
+    "运动"
+  ],
+  "expertise": [],
+  "saving_throw_proficiencies": [
+    "力量",
+    "敏捷"
+  ],
+  "weapons": [
+    {
+      "name": "长剑",
+      "attack_bonus": 5,
+      "damage": "1d8+3",
+      "damage_type": "挥砍",
+      "range": "近战",
+      "properties": [
+        " versatile (1d10)"
+      ]
+    },
+    {
+      "name": "长弓",
+      "attack_bonus": 5,
+      "damage": "1d8+3",
+      "damage_type": "穿刺",
+      "range": "150/600",
+      "properties": [
+        "双手",
+        "弹药"
+      ]
+    },
+    {
+      "name": "短剑",
+      "attack_bonus": 5,
+      "damage": "1d6+3",
+      "damage_type": "穿刺",
+      "range": "近战",
+      "properties": [
+        "灵巧",
+        "轻型"
+      ]
+    }
+  ],
+  "armor": "皮甲",
+  "shield": false,
+  "items": [
+    "箭袋（20支箭）",
+    "探索者背包",
+    "猎人的猎物袋",
+    "磨刀石",
+    "打火石",
+    "绳索50尺"
+  ],
+  "gold": 15,
+  "spells": [],
+  "spell_slots": {},
+  "spellcasting_ability": "",
+  "spell_save_dc": 10,
+  "features": [
+    "宿敌：亡灵（追踪亡灵时生存检定优势，回忆亡灵信息时智力检定优势）",
+    "自然探索者：森林地形——困难地形不减速行军，觅食双倍食物，追踪时无法被非魔法手段迷惑踪迹"
+  ],
+  "traits": [
+    "敏锐感官：察觉技能熟练",
+    "追踪大师：总能读取地面痕迹的方向和新鲜程度"
+  ],
+  "feats": [],
+  "languages": [
+    "通用语",
+    "精灵语",
+    "兽人语"
+  ],
+  "appearance": "深色长发微卷，额前有一缕灰白。沧桑而坚毅的面容，下巴上留着几日没刮的胡茬。约三十多岁，身披深绿色旧斗篷，腰间挂着磨损的长剑。",
+  "backstory": "阿拉贡，一名习惯了独行的游侠和猎人。多年在荒野中追踪和狩猎，让他练就了无人能及的追踪技巧和野外生存能力。他曾追踪亡灵和黑暗生物，见证过凡人难以理解的古老恐惧。迷雾将他带入巴洛维亚——一片被黑暗吞噬的土地。在这里，他必须依靠自己的剑、弓，以及新结识的同伴，面对这片土地上最古老的邪恶。",
+  "notes": "",
+  "portrait": "",
+  "owner": "阿拉贡",
+  "created_at": "2026-06-24T02:40:02.406311+00:00",
+  "updated_at": "2026-06-24T02:40:50.450575+00:00"
+}
