@@ -23,8 +23,11 @@ input:focus,select:focus{outline:none;border-color:#e94560}
 .msg{padding:6px 0;border-bottom:1px solid #1a1a3e;font-size:14px;line-height:1.6}
 .msg.system{opacity:.85;font-style:italic}.msg.system .msg-from{color:#f0a500}
 .msg.death{background:#3d0000;border-left:3px solid #e94560;padding-left:8px}
+.msg.streaming{background:#1a2a1a;border-left:3px solid #4ecca3;padding-left:8px}
 .msg-from{color:#e94560;font-weight:bold;margin-right:8px}
 .msg-time{color:#555;font-size:11px;margin-left:8px}
+.cursor-blink{animation:blink 0.7s infinite;color:#4ecca3;font-weight:bold}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 /* Sidebar */
 .room-sidebar{width:180px;padding:8px;overflow-y:auto;border-right:1px solid #1a1a3e;flex-shrink:0}
 .room-btn{display:block;width:100%;padding:6px 12px;margin:2px 0;background:transparent;border:none;color:#ccc;text-align:left;border-radius:4px;cursor:pointer;font-size:13px}

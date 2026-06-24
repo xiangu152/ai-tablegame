@@ -65,17 +65,21 @@ class MessageNotifier:
 
     Room-level: notify(room) → wakes ALL agents waiting on that room
     Agent-level: notify_agent(agent_name) → wakes a specific agent
+    Combined: wait_room_or_signal(room, agent) → wakes on either, returns reason
     """
 
     def __init__(self):
         self._room_events: dict[str, asyncio.Event] = {}
         self._agent_events: dict[str, asyncio.Event] = {}
+        self._agent_signal_reasons: dict[str, str] = {}
 
     def notify(self, room: str):
         if room in self._room_events:
             self._room_events[room].set()
 
-    def notify_agent(self, agent_name: str):
+    def notify_agent(self, agent_name: str, reason: str = "signal"):
+        """Wake a specific agent with an optional reason (e.g. 'dm_turn', 'your_turn')."""
+        self._agent_signal_reasons[agent_name] = reason
         if agent_name in self._agent_events:
             self._agent_events[agent_name].set()
 
@@ -90,6 +94,49 @@ class MessageNotifier:
             self._agent_events[agent_name] = asyncio.Event()
         self._agent_events[agent_name].clear()
         await self._agent_events[agent_name].wait()
+
+    async def wait_room_or_signal(
+        self, room: str, agent_name: str, timeout: float = 120.0
+    ) -> tuple[bool, str]:
+        """Wait for either room messages OR explicit agent signal.
+
+        Returns (was_signaled, reason).
+        was_signaled=True means the agent was explicitly targeted.
+        reason describes what happened (e.g. 'your_turn', 'room_message', 'timeout').
+        """
+        # Set up fresh events
+        room_evt = asyncio.Event()
+        agent_evt = asyncio.Event()
+        self._room_events[room] = room_evt
+        self._agent_events[agent_name] = agent_evt
+
+        done_reason = {"value": "timeout"}
+        combined = asyncio.Event()
+
+        async def on_room():
+            await room_evt.wait()
+            done_reason["value"] = "room_message"
+            combined.set()
+
+        async def on_signal():
+            await agent_evt.wait()
+            reason = self._agent_signal_reasons.get(agent_name, "signal")
+            done_reason["value"] = reason
+            combined.set()
+
+        t1 = asyncio.create_task(on_room())
+        t2 = asyncio.create_task(on_signal())
+
+        try:
+            await asyncio.wait_for(combined.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            done_reason["value"] = "timeout"
+        finally:
+            t1.cancel()
+            t2.cancel()
+
+        was_signaled = done_reason["value"] not in ("room_message", "timeout")
+        return was_signaled, done_reason["value"]
 
 
 # ============================================================
@@ -124,6 +171,41 @@ class GameManager:
 
         self._running = False
         self.expected_player_count = 0  # set by game loop
+
+        # Event bus for streaming speech (asyncio.Queue)
+        self._event_bus: asyncio.Queue = asyncio.Queue()
+
+    def publish_event(self, event: dict):
+        """Publish an event to the SSE stream (non-blocking)."""
+        try:
+            self._event_bus.put_nowait(event)
+        except asyncio.QueueFull:
+            pass
+
+    async def stream_events(self):
+        """Async generator for SSE event stream."""
+        while self._running:
+            try:
+                event = await asyncio.wait_for(self._event_bus.get(), timeout=1.0)
+                yield event
+            except asyncio.TimeoutError:
+                pass
+
+    def signal_player(self, target: str) -> dict:
+        """Signal a specific player to take their turn. 'all' wakes everyone."""
+        if target == "all":
+            self.notifier.notify("酒馆大厅")
+            for name in self.player_agents:
+                self.notifier.notify_agent(name, reason="your_turn")
+            return {"status": "ok", "target": "all", "woke": len(self.player_agents)}
+        elif target == "DM":
+            self.notifier.notify_agent("DM", reason="your_turn")
+            return {"status": "ok", "target": "DM", "woke": 1}
+        elif target in self.player_agents:
+            self.notifier.notify_agent(target, reason="your_turn")
+            return {"status": "ok", "target": target, "woke": 1}
+        else:
+            return {"status": "error", "message": f"Unknown target: {target}"}
 
     # ============================================================
     # Agent Memory
@@ -184,6 +266,14 @@ Private workspace for session notes, NPC tracking, plot ideas.
 - **Read**: adventure text, rulebooks, YOUR memory only
 - **Write**: save to YOUR memory, game files
 - **GameState**: save/load game state
+- **WaitForMessages**: block until new messages arrive or you're signaled
+  Use this to yield your turn: WaitForMessages(room='酒馆大厅')
+
+## Signal-Based Turn Control
+- After you narrate or address a player, call WaitForMessages(room='酒馆大厅').
+- Players will also wait. The human DM sends signals from the UI to wake specific players.
+- When a player responds, all agents see the message (room notification).
+- Read the message, decide if action is needed, then WaitForMessages again.
 
 ## Rules
 - ❌ NEVER read player memory files
@@ -212,6 +302,8 @@ Private workspace for session notes, NPC tracking, plot ideas.
             GameReadTool(agent_name="DM", memory_dir=str(dm_mem)),
             GameWriteTool(agent_name="DM", memory_dir=str(dm_mem)),
             GameStateTool(game_session=None, agent_name="DM"),
+            WaitForMessages(notifier=self.notifier, chat=self.chat,
+                            agent_name="DM"),
             Bash(), Grep(), Glob(),
         ])
 
@@ -253,11 +345,12 @@ Character card: dm_memory/{self.game_name}/players/{player_name}.json
 ## Your Memory: {pl_mem}
 Private journal. Use Read/Write to track notes, clues, suspicions, goals.
 
-## Turn-Based Play Rules
-- 🎲 Players speak IN TURN order: player1 → player2 → player3 → player4
-- 🎲 ONLY speak when it's YOUR turn. Wait for the DM to address you.
-- 🎲 If you have nothing to say this turn, send: Chat(action="send", room="酒馆大厅", content="(pass)")
-- 🎲 "(pass)" means you skip your turn — the DM will move to the next player.
+## Signal-Based Turn Play
+- 🎲 Players are woken by signals: either a room message or an explicit "your turn" signal.
+- 🎲 When you wake up, read messages. If the DM is addressing YOU, respond.
+- 🎲 If the message is NOT directed at you, just call WaitForMessages again.
+- 🎲 ONLY speak when addressed by DM or when it's clearly your turn.
+- 🎲 If you have nothing to say: Chat(action="send", room="酒馆大厅", content="(pass)")
 - 🎲 After speaking OR passing, call WaitForMessages(room='酒馆大厅').
 
 ## What You Can Do
@@ -266,7 +359,7 @@ Private journal. Use Read/Write to track notes, clues, suspicions, goals.
 - ✅ Card: view your character sheet (action=get_summary)
 - ✅ Read: rulebooks, your card, your memory files
 - ✅ Write: your memory directory only
-- ✅ WaitForMessages: pause until new messages arrive
+- ✅ WaitForMessages: pause until new messages or your turn signal
 - 🌐 ALL roleplay, dialogue, and actions MUST be in Chinese (中文)
 
 ## What You CANNOT Do
@@ -279,9 +372,10 @@ Private journal. Use Read/Write to track notes, clues, suspicions, goals.
 1. Read chat: Chat(action="listen", room="酒馆大厅")
 2. Check yourself: Card(action="get_summary", name="{player_name}")
 3. Review journal: Read(file_path="{pl_mem}/journal.md")
-4. Act: Chat(action="send", room="酒馆大厅", content="your action/dialogue")
-5. Take notes: Write(file_path="{pl_mem}/journal.md", content="...")
-6. Yield: WaitForMessages(room="酒馆大厅")
+4. Only act if the DM is addressing you or it's clearly your turn
+5. Act: Chat(action="send", room="酒馆大厅", content="your action/dialogue")
+6. Take notes: Write(file_path="{pl_mem}/journal.md", content="...")
+7. Yield: WaitForMessages(room="酒馆大厅")
 """
 
         model = DeepSeekChatModel(
@@ -297,7 +391,8 @@ Private journal. Use Read/Write to track notes, clues, suspicions, goals.
             CardTool(player_card=self.cards, agent_name=player_name),
             GameReadTool(agent_name=player_name, memory_dir=str(pl_mem)),
             GameWriteTool(agent_name=player_name, memory_dir=str(pl_mem)),
-            WaitForMessages(),
+            WaitForMessages(notifier=self.notifier, chat=self.chat,
+                            agent_name=player_name),
         ])
 
         state = AgentState()
@@ -396,22 +491,21 @@ Private journal. Use Read/Write to track notes, clues, suspicions, goals.
 
 
     async def dm_observe_and_reply(self):
-        """DM turn: observe chat, respond, then wait for players."""
+        """DM turn: observe chat, respond, then wait."""
         if not self.dm_agent or not self._running:
             return
 
         async with self._get_lock("DM"):
             from agentscope.message import UserMsg
             prompt = (
-                f"Game '{self.game_name}' is active. "
-                f"Read chat: Chat(action=listen, room='酒馆大厅'). "
-                f"Read your memory notes. "
-                f"If it's your first turn: create player agents using CreatePlayer "
-                f"(human told you how many), then announce the opening scene. "
-                f"If mid-game: respond to player actions, advance the plot. "
+                f"Game '{self.game_name}' — your turn. "
+                f"Read latest messages: Chat(action=listen, room='酒馆大厅'). "
+                f"Check your memory notes. "
+                f"If first turn: create {self.expected_player_count} players with CreatePlayer, "
+                f"then announce opening scene to 酒馆大厅. "
+                f"If game in progress: respond to what happened, advance plot. "
                 f"Post thinking to 'DM-思考室'. Narrate to '酒馆大厅'. "
-                f"After narrating, call WaitForMessages(room='酒馆大厅') "
-                f"to yield and wait for player responses."
+                f"After narrating, call WaitForMessages(room='酒馆大厅') to yield."
             )
             reply = await self.dm_agent.reply(UserMsg(name="system", content=prompt))
             return reply.get_text_content() or ""
@@ -419,6 +513,7 @@ Private journal. Use Read/Write to track notes, clues, suspicions, goals.
     # ── Player Turn ──
 
     async def player_observe_and_reply(self, player_name: str):
+        """Player turn: triggered by signal or room messages."""
         agent = self.player_agents.get(player_name)
         if not agent or not self._running:
             return
@@ -435,12 +530,12 @@ Private journal. Use Read/Write to track notes, clues, suspicions, goals.
             prompt = (
                 f"Game '{self.game_name}'. You are '{player_name}'. "
                 f"Read chat: Chat(action=listen, room='酒馆大厅'). "
-                f"Check yourself: Card(action=get_summary, name='{player_name}'). "
-                f"Review journal. "
-                f"Respond in character — actions and dialogue. "
-                f"Save notes to journal. "
-                f"After acting, call WaitForMessages(room='酒馆大厅') "
-                f"to yield your turn."
+                f"Check your card: Card(action=get_summary, name='{player_name}'). "
+                f"If the DM or another player is addressing you, respond in character. "
+                f"If the message is not directed at you, call "
+                f"WaitForMessages(room='酒馆大厅') to yield. "
+                f"After responding, save notes to journal, then "
+                f"WaitForMessages(room='酒馆大厅') to yield your turn."
             )
             reply = await agent.reply(UserMsg(name="system", content=prompt))
             return reply.get_text_content() or ""

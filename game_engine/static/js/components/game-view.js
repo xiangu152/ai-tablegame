@@ -1,5 +1,5 @@
 /**
- * game-view.js — Main chat-app layout (~80 lines)
+ * game-view.js — Main chat-app layout (~60 lines)
  * Composes: StatusBar, RoomSidebar, ChatArea, PlayerPanel
  */
 const GameView = {
@@ -9,7 +9,7 @@ const GameView = {
     <div class="game-body">
       <room-sidebar :game="game" :selected="room" @select="onRoom" />
       <chat-area ref="chat" :game="game" :room="room" @new-message="onMsg" />
-      <player-panel :game="game" />
+      <player-panel :game="game" @signal="onSignal" />
     </div>
   </div>`,
   props: { game: String, role: String },
@@ -19,7 +19,15 @@ const GameView = {
     title() { return (this.role === 'dm' ? '🎭 DM Panel' : '🎲 Player') + ' · ' + this.game; },
   },
   methods: {
-    onRoom(name) { this.room = name; },
-    onMsg(msg) { /* future: dice log update */ },
+    onRoom(name) {
+      this.room = name;
+    },
+    onMsg(msg) {
+      // Could trigger dice log refresh, sound effects, etc.
+    },
+    onSignal(target) {
+      // Could show a toast notification
+      console.log('Signal sent to:', target);
+    },
   },
 };

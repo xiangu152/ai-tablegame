@@ -159,12 +159,13 @@ class GameReader:
         return p.read_text().splitlines()[-limit:]
 
 # ============================================================
-# Agent Game Loop
+# Agent Game Loop (Signal-Based, Concurrent Background Agents)
 # ============================================================
 
 _agent_loops: dict[str, asyncio.Task] = {}
 _agent_running: dict[str, bool] = {}
 _agent_paused: dict[str, bool] = {}
+_agent_managers: dict[str, "GameManager"] = {}
 
 def _count_chat_msgs(manager) -> int:
     """Count total messages in 酒馆大厅."""
@@ -175,81 +176,176 @@ def _count_chat_msgs(manager) -> int:
         return 0
 
 def _send_heartbeat(manager):
-    """Wake DM when all agents are silent. Sends a system message to trigger notifier."""
+    """Wake DM when all agents are silent."""
     try:
         pub_id = manager._get_room_id("酒馆大厅")
         if pub_id:
             manager.chat.send_system(pub_id, "❤️ 心跳 — 所有冒险者都在等待。地下城主，请推进剧情。")
         manager.notifier.notify("酒馆大厅")
-        # Also wake DM directly
-        manager.notifier.notify_agent("DM")
+        manager.notifier.notify_agent("DM", reason="heartbeat")
     except Exception as e:
         logger.warning("Heartbeat failed: %s", e)
+
+
+async def _dm_background_loop(manager):
+    """DM agent runs continuously in background, blocking on WaitForMessages."""
+    logger.info("[%s] DM background loop started", manager.game_name)
+    while manager._running:
+        try:
+            await manager.dm_observe_and_reply()
+        except Exception as e:
+            logger.error("[%s] DM background error: %s", manager.game_name, e)
+            await asyncio.sleep(2)
+
+
+async def _player_background_loop(manager, player_name: str):
+    """Player agent runs continuously, only acts when signaled or addressed."""
+    logger.info("[%s] Player '%s' background loop started", manager.game_name, player_name)
+    while manager._running and player_name not in manager._dead_players:
+        try:
+            await manager.player_observe_and_reply(player_name)
+        except Exception as e:
+            logger.error("[%s] Player '%s' bg error: %s", manager.game_name, player_name, e)
+            await asyncio.sleep(2)
+    logger.info("[%s] Player '%s' background loop ended", manager.game_name, player_name)
+
+
+async def _heartbeat_monitor(manager):
+    """Monitor for silence and send heartbeat to DM."""
+    await asyncio.sleep(10)  # initial grace period
+    silent_checks = 0
+    last_count = _count_chat_msgs(manager)
+    while manager._running:
+        await asyncio.sleep(15)  # check every 15s
+        if not manager._running:
+            break
+        current = _count_chat_msgs(manager)
+        if current == last_count:
+            silent_checks += 1
+            if silent_checks >= 2:  # 30s of silence
+                logger.info("[%s] Heartbeat: %ds silent — waking DM", manager.game_name, silent_checks * 15)
+                _send_heartbeat(manager)
+                silent_checks = 0
+        else:
+            silent_checks = 0
+        last_count = current
+
 
 async def _agent_game_loop(game_name: str, player_names: list[str]):
     from game_engine.app import create_game_manager
     manager = create_game_manager(game_name)
     manager.expected_player_count = len(player_names)
     manager.create_dm_agent()
-    # DM creates players dynamically via CreatePlayer tool.
-    # Game loop picks up players as they appear in manager.player_agents.
     await manager.start_game()
-    _agent_running[game_name] = True; _agent_paused[game_name] = False
-    logger.info("[%s] Game loop started — DM will create players", game_name)
-    round_num = 0
-    silent_rounds = 0
+    _agent_running[game_name] = True
+    _agent_paused[game_name] = False
+    _agent_managers[game_name] = manager
+
+    # Launch DM as background task
+    dm_task = asyncio.create_task(_dm_background_loop(manager))
+    player_tasks: dict[str, asyncio.Task] = {}
+    hb_task = asyncio.create_task(_heartbeat_monitor(manager))
+
+    logger.info("[%s] Signal-based game loop started. DM + %d players in background.",
+                game_name, len(player_names))
+
     try:
         while _agent_running.get(game_name, False):
-            if _agent_paused.get(game_name, False): await asyncio.sleep(1); continue
-            round_num += 1
+            if _agent_paused.get(game_name, False):
+                await asyncio.sleep(1)
+                continue
 
-            # Track chat message count before the round
-            pre_count = _count_chat_msgs(manager)
-
-            try:
-                await manager.dm_observe_and_reply()
-            except Exception as e:
-                logger.error("[%s] DM turn error (round %d): %s", game_name, round_num, e)
-                await asyncio.sleep(2)
+            # Discover new players created dynamically by DM
             for pname in list(manager.player_agents.keys()):
-                if pname in manager._dead_players: continue
-                if _agent_paused.get(game_name, False) or not _agent_running.get(game_name, False): break
-                await manager.player_observe_and_reply(pname)
+                if pname not in player_tasks and pname not in manager._dead_players:
+                    player_tasks[pname] = asyncio.create_task(
+                        _player_background_loop(manager, pname)
+                    )
+                    logger.info("[%s] Started background loop for new player: %s", game_name, pname)
 
-            # Heartbeat: if no new messages this round, wake DM to drive story
-            post_count = _count_chat_msgs(manager)
-            if post_count == pre_count:
-                silent_rounds += 1
-                if silent_rounds >= 2:
-                    logger.info("[%s] Heartbeat: %d silent rounds — waking DM", game_name, silent_rounds)
-                    _send_heartbeat(manager)
-                    silent_rounds = 0
-            else:
-                silent_rounds = 0
-    except Exception as e: logger.error("[%s] Game loop failed: %s", game_name, e)
+            # Clean up dead players
+            for pname in list(player_tasks.keys()):
+                if pname in manager._dead_players:
+                    player_tasks[pname].cancel()
+                    del player_tasks[pname]
+
+            # Restart DM if it died unexpectedly
+            if dm_task.done():
+                logger.warning("[%s] DM task ended, restarting...", game_name)
+                try:
+                    exc = dm_task.exception()
+                    if exc:
+                        logger.error("[%s] DM task exception: %s", game_name, exc)
+                except Exception:
+                    pass
+                dm_task = asyncio.create_task(_dm_background_loop(manager))
+
+            await asyncio.sleep(1)
+    except Exception as e:
+        logger.error("[%s] Game loop failed: %s", game_name, e)
     finally:
-        _agent_running[game_name] = False; _agent_paused[game_name] = False
+        _agent_running[game_name] = False
+        _agent_paused[game_name] = False
+        _agent_managers.pop(game_name, None)
+        for t in [dm_task, hb_task] + list(player_tasks.values()):
+            t.cancel()
         await manager.stop_game()
 
+
 def start_agents(game_name: str, player_names: list[str]):
-    if _agent_running.get(game_name, False): return {"status": "already_running"}
+    if _agent_running.get(game_name, False):
+        return {"status": "already_running"}
     loop = asyncio.new_event_loop()
     task = loop.create_task(_agent_game_loop(game_name, player_names))
     _agent_loops[game_name] = task
-    def run_loop(): asyncio.set_event_loop(loop); loop.run_until_complete(task)
-    t = threading.Thread(target=run_loop, daemon=True, name=f"agents-{game_name}"); t.start()
+
+    def run_loop():
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(task)
+
+    t = threading.Thread(target=run_loop, daemon=True, name=f"agents-{game_name}")
+    t.start()
     return {"status": "started", "game": game_name, "players": player_names}
 
+
 def stop_agents(game_name: str):
-    _agent_running[game_name] = False; _agent_paused[game_name] = False
+    _agent_running[game_name] = False
+    _agent_paused[game_name] = False
     task = _agent_loops.pop(game_name, None)
-    if task: task.cancel()
+    if task:
+        task.cancel()
     return {"status": "stopped"}
 
-def pause_agents(game_name: str): _agent_paused[game_name] = True; return {"status": "paused"}
-def resume_agents(game_name: str): _agent_paused[game_name] = False; return {"status": "resumed"}
+
+def pause_agents(game_name: str):
+    _agent_paused[game_name] = True
+    return {"status": "paused"}
+
+
+def resume_agents(game_name: str):
+    _agent_paused[game_name] = False
+    return {"status": "resumed"}
+
+
 def agent_status(game_name: str) -> dict:
-    return {"game": game_name, "running": _agent_running.get(game_name, False), "paused": _agent_paused.get(game_name, False)}
+    manager = _agent_managers.get(game_name)
+    return {
+        "game": game_name,
+        "running": _agent_running.get(game_name, False),
+        "paused": _agent_paused.get(game_name, False),
+        "players": list(manager.player_agents.keys()) if manager else [],
+        "dead": list(manager._dead_players) if manager else [],
+    }
+
+
+def signal_agent(game_name: str, target: str) -> dict:
+    """Send a signal to a specific agent or 'all'. Wakes them from WaitForMessages."""
+    manager = _agent_managers.get(game_name)
+    if not manager:
+        return {"status": "error", "message": "Game not running"}
+    result = manager.signal_player(target)
+    logger.info("[%s] Signal: target=%s, result=%s", game_name, target, result)
+    return result
 
 # ============================================================
 # FastAPI App
@@ -294,15 +390,40 @@ async def api_saves(game_name: str): return JSONResponse(list_saves(game_name))
 async def api_agent_status(game_name: str): return JSONResponse(agent_status(game_name))
 
 @app.get("/api/games/{game_name}/events")
-async def api_events(game_name: str):
+async def api_events(game_name: str, room: str = Query(default="\u9152\u9986\u5927\u5385")):
     async def event_stream():
         last_id = 0
+        last_player_refresh = 0
         while True:
             try:
-                msgs = GameReader(game_name).chat_msgs("\u9152\u9986\u5927\u5385", after=last_id, limit=50)
-                for m in msgs: last_id = max(last_id, m["id"]); yield f"data: {json.dumps(m, ensure_ascii=False)}\n\n"
-            except Exception: pass
-            await asyncio.sleep(2)
+                # Chat messages
+                msgs = GameReader(game_name).chat_msgs(room, after=last_id, limit=50)
+                for m in msgs:
+                    last_id = max(last_id, m["id"])
+                    yield f"data: {json.dumps({'type': 'chat', **m}, ensure_ascii=False)}\n\n"
+
+                # Player status refresh (every 5s)
+                import time
+                now = time.time()
+                if now - last_player_refresh > 5:
+                    players = GameReader(game_name).players()
+                    status = agent_status(game_name)
+                    yield f"data: {json.dumps({'type': 'players', 'players': players, 'status': status}, ensure_ascii=False)}\n\n"
+                    last_player_refresh = now
+
+                # Also check event bus for streaming events
+                manager = _agent_managers.get(game_name)
+                if manager:
+                    try:
+                        while True:
+                            evt = manager._event_bus.get_nowait()
+                            yield f"data: {json.dumps({'type': evt.get('type', 'event'), **evt}, ensure_ascii=False)}\n\n"
+                    except Exception:
+                        pass
+
+            except Exception:
+                pass
+            await asyncio.sleep(1.5)
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 @app.post("/api/games/create")
@@ -348,6 +469,14 @@ async def api_pause_agents(game_name: str): return JSONResponse(pause_agents(gam
 
 @app.post("/api/games/{game_name}/agents/resume")
 async def api_resume_agents(game_name: str): return JSONResponse(resume_agents(game_name))
+
+@app.post("/api/games/{game_name}/signal")
+async def api_signal(game_name: str, request: Request):
+    """Send a signal to wake a specific agent or all agents.
+    Body: {"target": "player1"} or {"target": "all"}"""
+    body = await request.json()
+    target = body.get("target", "all")
+    return JSONResponse(signal_agent(game_name, target))
 
 if __name__ == "__main__":
     port = 8080

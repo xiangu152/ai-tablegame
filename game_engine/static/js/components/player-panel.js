@@ -1,15 +1,20 @@
 /**
- * player-panel.js — Online players with HP + status dots (~80 lines)
+ * player-panel.js — Online players with HP + signal buttons (~100 lines)
+ * Uses SSE for real-time player status updates.
  */
 const PlayerPanel = {
   template: `
   <div class="player-panel">
-    <div class="panel-title">Players Online ({{ players.length }})</div>
-    <div v-for="p in players" :key="p.name" class="player-card" :class="{ dead: p.dead }">
-      <div class="player-card-header">
+    <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Players ({{ players.length }})</span>
+      <button class="btn btn-primary btn-small" @click="signalAll" title="Wake all players">▶ All</button>
+    </div>
+    <div v-for="p in alivePlayers" :key="p.name" class="player-card">
+      <div class="player-card-header" style="display:flex;align-items:center;gap:4px">
         <span class="status-dot" :class="p.status"></span>
-        <b>{{ p.name }}</b>
-        <span style="color:#888;font-size:11px;margin-left:auto">{{ p.statusLabel }}</span>
+        <b style="flex:1">{{ p.name }}</b>
+        <button v-if="p.name !== 'DM'" class="btn btn-secondary btn-small" @click="signal(p.name)" title="Signal this player's turn">▶</button>
+        <span style="color:#888;font-size:11px">{{ p.statusLabel }}</span>
       </div>
       <div v-if="p.level" style="font-size:11px;color:#aaa;margin:2px 0">
         Lv.{{ p.level }} {{ p.race }} {{ p.class }}
@@ -25,7 +30,8 @@ const PlayerPanel = {
     </div>
   </div>`,
   props: { game: String },
-  data() { return { players: [], timer: null }; },
+  emits: ['signal'],
+  data() { return { players: [], status: null, timer: null }; },
   async mounted() { if (this.game) { await this.fetch(); this.timer = setInterval(() => this.fetch(), 5000); } },
   beforeUnmount() { if (this.timer) clearInterval(this.timer); },
   watch: {
@@ -37,17 +43,23 @@ const PlayerPanel = {
         apiGet('/api/games/' + this.game + '/players'),
         apiGet('/api/games/' + this.game + '/agents/status'),
       ]);
+      this.status = st;
       const deadSet = new Set(st ? (st.dead || []) : []);
-      this.players = (pls || []).map(p => ({
-        ...p, dead: deadSet.has(p.name),
-        status: deadSet.has(p.name) ? 'dead' : 'active',
-        statusLabel: deadSet.has(p.name) ? 'Dead' : 'Active',
-      }));
-      // Add DM
-      this.players.unshift({ name: 'DM', status: (st && st.running) ? 'active' : 'waiting', statusLabel: st && st.running ? 'Active' : 'Waiting' });
+      const playerNames = new Set(st ? (st.players || []) : []);
+      this.players = [
+        { name: 'DM', status: (st && st.running) ? 'active' : 'waiting', statusLabel: st && st.running ? 'DM' : 'Waiting' },
+        ...(pls || []).map(p => ({
+          ...p, dead: deadSet.has(p.name),
+          status: deadSet.has(p.name) ? 'dead' : (playerNames.has(p.name) ? 'active' : 'waiting'),
+          statusLabel: deadSet.has(p.name) ? 'Dead' : (playerNames.has(p.name) ? 'Active' : 'Waiting'),
+        })),
+      ];
     },
+    async signal(name) { this.$emit('signal', name); await apiPost('/api/games/' + this.game + '/signal', { target: name }); },
+    async signalAll() { this.$emit('signal', 'all'); await apiPost('/api/games/' + this.game + '/signal', { target: 'all' }); },
   },
   computed: {
+    alivePlayers() { return this.players.filter(p => !p.dead); },
     deadPlayers() { return this.players.filter(p => p.dead); },
   },
 };
