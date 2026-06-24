@@ -32,10 +32,10 @@ const PlayerPanel = {
   props: { game: String },
   emits: ['signal'],
   data() { return { players: [], status: null, timer: null }; },
-  async mounted() { if (this.game) { await this.fetch(); this.timer = setInterval(() => this.fetch(), 5000); } },
+  async mounted() { if (this.game) { await this.fetch(); this.timer = setInterval(() => this.fetch(), 3000); } },
   beforeUnmount() { if (this.timer) clearInterval(this.timer); },
   watch: {
-    game() { if (this.timer) clearInterval(this.timer); if (this.game) { this.fetch(); this.timer = setInterval(() => this.fetch(), 5000); } },
+    game() { if (this.timer) clearInterval(this.timer); if (this.game) { this.fetch(); this.timer = setInterval(() => this.fetch(), 3000); } },
   },
   methods: {
     async fetch() {
