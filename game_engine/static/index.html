@@ -1,0 +1,90 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>🐉 DND AI Tablegame</title><style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#1a1a2e;color:#e0e0e0;font-size:14px;min-width:1024px;height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0f0f23}
+::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+.btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:opacity .2s}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:#e94560;color:#fff}.btn-secondary{background:#0f3460;color:#e0e0e0}
+.btn-danger{background:#c0392b;color:#fff}.btn-small{padding:4px 10px;font-size:11px}
+input,select{background:#0f3460;border:1px solid #333;color:#e0e0e0;padding:8px 12px;border-radius:4px;font-size:13px}
+input:focus,select:focus{outline:none;border-color:#e94560}
+.form-row{display:flex;gap:8px;padding:8px 0}.form-row input{flex:1}
+.card{background:#16213e;padding:16px;border-radius:8px;margin:4px 0}
+/* Home */
+.home-page{display:flex;justify-content:center;padding:40px 20px}
+.home-card{background:#16213e;padding:24px;border-radius:12px;max-width:800px;width:100%}
+.game-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #2a2a4a}
+/* Game Layout */
+.game-layout{display:flex;flex-direction:column;height:100vh}
+.game-body{display:flex;flex:1;overflow:hidden}
+.chat-area{flex:1;overflow-y:auto;padding:12px}
+.chat-empty{color:#555;text-align:center;padding:40px;font-style:italic}
+.msg{padding:6px 0;border-bottom:1px solid #1a1a3e;font-size:14px;line-height:1.6}
+.msg.system{opacity:.85;font-style:italic}.msg.system .msg-from{color:#f0a500}
+.msg.death{background:#3d0000;border-left:3px solid #e94560;padding-left:8px}
+.msg-from{color:#e94560;font-weight:bold;margin-right:8px}
+.msg-time{color:#555;font-size:11px;margin-left:8px}
+/* Sidebar */
+.room-sidebar{width:180px;padding:8px;overflow-y:auto;border-right:1px solid #1a1a3e;flex-shrink:0}
+.room-btn{display:block;width:100%;padding:6px 12px;margin:2px 0;background:transparent;border:none;color:#ccc;text-align:left;border-radius:4px;cursor:pointer;font-size:13px}
+.room-btn:hover,.room-btn.active{background:#e94560;color:#fff}
+.sidebar-info{margin-top:12px;font-size:11px;color:#666}
+/* Player Panel */
+.player-panel{width:220px;padding:8px;overflow-y:auto;border-left:1px solid #1a1a3e;flex-shrink:0}
+.panel-title{color:#e94560;font-size:13px;font-weight:bold;margin-bottom:8px}
+.player-card{background:#0f3460;padding:8px;margin:4px 0;border-radius:4px;font-size:12px}
+.player-card.dead{opacity:.5}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.status-dot.active{background:#4ecca3;animation:pulse 1.5s infinite}
+.status-dot.waiting{background:#f0a500}.status-dot.dead{background:#e94560}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.hp-row{display:flex;align-items:center;gap:6px;margin-top:4px}
+.hp-bar{width:80px;height:6px;background:#333;border-radius:3px;overflow:hidden}
+.hp-fill{height:100%;border-radius:3px}.hp-fill.good{background:#4ecca3}.hp-fill.mid{background:#f0a500}.hp-fill.low{background:#e94560}
+/* Status Bar */
+.status-bar{background:#16213e;padding:8px 16px;display:flex;align-items:center;gap:12px;border-bottom:2px solid #1a1a3e}
+.status-label{font-size:11px;padding:2px 8px;border-radius:3px}
+.status-label.running{background:#1a3a1a;color:#4ecca3}
+.status-label.paused{background:#3a3a1a;color:#f0a500}
+/* Tabs */
+.tab-bar{display:flex;background:#0f3460;border-radius:8px 8px 0 0;overflow:hidden;margin-top:8px}
+.tab-btn{padding:8px 20px;background:transparent;border:none;color:#aaa;cursor:pointer;font-size:13px}
+.tab-btn.active{background:#e94560;color:#fff}
+.tab-content{padding:8px}
+.char-row,.save-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1a1a3e}
+/* Loading */
+.loading-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:999;justify-content:center;align-items:center;flex-direction:column}
+.loading-overlay.show{display:flex}
+.spinner{width:48px;height:48px;border:4px solid #333;border-top-color:#e94560;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:#aaa;font-size:14px;text-align:center;max-width:400px;line-height:1.6}
+</style></head><body>
+<div id="app">
+  <loading-overlay></loading-overlay>
+
+  <!-- Home -->
+  <home-page v-if="page === 'home'"
+    @enter-dm="enterDm" @enter-player="enterPlayer">
+  </home-page>
+
+  <!-- DM Panel (tabs) -->
+  <div v-if="page === 'dm-chars'">
+    <status-bar :title="'🎭 DM Panel · ' + game" :game="game" @back="page = 'game'" />
+    <dm-panel :game="game" />
+  </div>
+
+  <!-- Game View -->
+  <game-view v-if="page === 'game'" :game="game" :role="role" @back="page = 'home'; game = ''" />
+</div>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="/static/js/utils.js"></script>
+<script src="/static/js/components/status-bar.js"></script>
+<script src="/static/js/components/room-sidebar.js"></script>
+<script src="/static/js/components/player-panel.js"></script>
+<script src="/static/js/components/chat-area.js"></script>
+<script src="/static/js/components/home-page.js"></script>
+<script src="/static/js/components/dm-panel.js"></script>
+<script src="/static/js/components/game-view.js"></script>
+<script src="/static/js/app.js"></script>
+</body></html>

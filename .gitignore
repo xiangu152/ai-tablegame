@@ -3,3 +3,5 @@
 config.yaml
 dnd_data
 __pycache__
+agent-scope-learn/
+*.pyc

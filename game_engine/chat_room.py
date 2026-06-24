@@ -216,9 +216,10 @@ class ChatRoom:
             "INSERT INTO messages (room_id, user_id, content, created_at) VALUES (?,?,?,?)",
             (room_id, user["id"], content, now),
         )
-        # 双写：日志文件
+        # 双写：SQLite + 按房间的日志文件
         room = self._get_room(room_id)
-        chat_logger.info("[%s/%s] %s: %s", room["name"], room_id[:8], user["name"], content)
+        room_logger = self._get_room_logger(room["name"])
+        room_logger.info("[%s] %s: %s", room_id[:8], user["name"], content)
         return {
             "room_id": room_id,
             "from": user["name"],
@@ -255,13 +256,14 @@ class ChatRoom:
         ]
 
     def send_system(self, room_id: str, content: str):
-        """发系统消息 — 写入 SQLite + 日志文件"""
+        """发系统消息 — 写入 SQLite + 按房间日志"""
         self._execute(
             "INSERT INTO messages (room_id, user_id, content, created_at) VALUES (?,?,?,?)",
             (room_id, "system", content, self._now()),
         )
         room = self._get_room(room_id)
-        chat_logger.info("[%s/%s] ⚙️ SYSTEM: %s", room["name"], room_id[:8], content)
+        room_logger = self._get_room_logger(room["name"])
+        room_logger.info("[%s] ⚙️ SYSTEM: %s", room_id[:8], content)
 
     # ---- 查询 ----
 
@@ -313,16 +315,36 @@ class ChatRoom:
     # ---- 内部 ----
 
     def _setup_file_logger(self):
-        """配置聊天日志文件 handler（追加模式，UTF-8）"""
-        if not chat_logger.handlers:
-            fh = logging.FileHandler(str(self.log_path), encoding="utf-8")
-            fh.setLevel(logging.DEBUG)
-            fh.setFormatter(logging.Formatter(
-                "%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-            ))
-            chat_logger.addHandler(fh)
-            chat_logger.setLevel(logging.DEBUG)
-            chat_logger.propagate = False  # 不重复输出到 root logger
+        """Setup logs directory. Per-room loggers are created on demand."""
+        self._logs_dir = self.db_path.parent / "logs"
+        self._logs_dir.mkdir(parents=True, exist_ok=True)
+        self._room_loggers: dict[str, logging.Logger] = {}
+
+    def _get_room_logger(self, room_name: str) -> logging.Logger:
+        """Get or create a per-room logger that writes to logs/{room_name}.log.
+
+        Each chat room gets its own log file for independent persistence
+        and easy review of specific conversations.
+        """
+        if room_name not in self._room_loggers:
+            safe_name = room_name.replace("/", "_").replace(" ", "_")
+            logger_name = f"dnd.chat.{self.db_path.parent.name}.{safe_name}"
+            room_logger = logging.getLogger(logger_name)
+
+            if not room_logger.handlers:
+                log_file = self._logs_dir / f"{safe_name}.log"
+                fh = logging.FileHandler(str(log_file), encoding="utf-8")
+                fh.setLevel(logging.DEBUG)
+                fh.setFormatter(logging.Formatter(
+                    "%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+                ))
+                room_logger.addHandler(fh)
+                room_logger.setLevel(logging.DEBUG)
+                room_logger.propagate = False
+
+            self._room_loggers[room_name] = room_logger
+
+        return self._room_loggers[room_name]
 
     def _init_db(self):
         with sqlite3.connect(str(self.db_path)) as conn:

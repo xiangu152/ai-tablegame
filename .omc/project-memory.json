@@ -32,8 +32,8 @@
   "hotPaths": [
     {
       "path": "game_engine/web_ui.py",
-      "accessCount": 47,
-      "lastAccessed": 1782269056240,
+      "accessCount": 79,
+      "lastAccessed": 1782288064684,
       "type": "file"
     },
     {
@@ -43,15 +43,21 @@
       "type": "file"
     },
     {
+      "path": "game_engine/chat_room.py",
+      "accessCount": 26,
+      "lastAccessed": 1782288654814,
+      "type": "file"
+    },
+    {
       "path": "game_engine/game_session.py",
-      "accessCount": 24,
-      "lastAccessed": 1782268921642,
+      "accessCount": 25,
+      "lastAccessed": 1782269448307,
       "type": "file"
     },
     {
       "path": "agent_roles/PLAYER.md",
-      "accessCount": 21,
-      "lastAccessed": 1782268620558,
+      "accessCount": 22,
+      "lastAccessed": 1782269563645,
       "type": "file"
     },
     {
@@ -62,26 +68,20 @@
     },
     {
       "path": "agent_roles/DM.md",
-      "accessCount": 17,
-      "lastAccessed": 1782268740665,
-      "type": "file"
-    },
-    {
-      "path": "game_engine/chat_room.py",
-      "accessCount": 17,
-      "lastAccessed": 1782268928263,
+      "accessCount": 18,
+      "lastAccessed": 1782269563343,
       "type": "file"
     },
     {
       "path": "game_engine/__init__.py",
-      "accessCount": 14,
-      "lastAccessed": 1782269087246,
+      "accessCount": 16,
+      "lastAccessed": 1782273730851,
       "type": "file"
     },
     {
       "path": "game_engine/agent_runner.py",
-      "accessCount": 12,
-      "lastAccessed": 1782269030591,
+      "accessCount": 14,
+      "lastAccessed": 1782270580549,
       "type": "file"
     },
     {
@@ -109,6 +109,12 @@
       "type": "file"
     },
     {
+      "path": "game_engine/player_card.py",
+      "accessCount": 8,
+      "lastAccessed": 1782276848252,
+      "type": "file"
+    },
+    {
       "path": "dm_memory/strahd_full/players/阿拉贡.json",
       "accessCount": 7,
       "lastAccessed": 1782240063351,
@@ -133,12 +139,6 @@
       "type": "file"
     },
     {
-      "path": "game_engine/player_card.py",
-      "accessCount": 6,
-      "lastAccessed": 1782236723862,
-      "type": "file"
-    },
-    {
       "path": "dm_agent/llm_client.py",
       "accessCount": 6,
       "lastAccessed": 1782236725009,
@@ -160,6 +160,12 @@
       "path": "dm_memory/strahd_full/players/吉姆利.json",
       "accessCount": 6,
       "lastAccessed": 1782240188780,
+      "type": "file"
+    },
+    {
+      "path": "game_engine/dice.py",
+      "accessCount": 6,
+      "lastAccessed": 1782270211216,
       "type": "file"
     },
     {
@@ -190,12 +196,6 @@
       "path": "dm_memory/strahd_full/players/甘道夫.json",
       "accessCount": 5,
       "lastAccessed": 1782240098513,
-      "type": "file"
-    },
-    {
-      "path": "game_engine/dice.py",
-      "accessCount": 4,
-      "lastAccessed": 1782236724128,
       "type": "file"
     },
     {
