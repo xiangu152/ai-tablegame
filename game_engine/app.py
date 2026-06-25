@@ -16,13 +16,14 @@ import os
 import json
 import asyncio
 import logging
+import yaml
 from pathlib import Path
 from typing import Optional
 
 from agentscope.agent import Agent
 from agentscope.state import AgentState
-from agentscope.model import DeepSeekChatModel
-from agentscope.credential import DeepSeekCredential
+from agentscope.model import AnthropicChatModel
+from agentscope.credential import AnthropicCredential
 from agentscope.tool import Toolkit
 from agentscope.permission import (
     PermissionContext,
@@ -40,8 +41,13 @@ from .tools import (
     GameStateTool,
     WaitForMessages,
     CreatePlayerTool,
+    SignalTool,
 )
-from .middleware import GameLoggingMiddleware, GameContextCompressor, MemoryInjectorMiddleware, GamePhaseMiddleware
+from .middleware import (
+    GameLoggingMiddleware, GameContextCompressor,
+    MemoryInjectorMiddleware, GamePhaseMiddleware,
+    ChatContextMiddleware, ToolCallCompactor,
+)
 from .chat_room import ChatRoom
 from .player_card import PlayerCard
 from .dice import Dice
@@ -146,9 +152,21 @@ class MessageNotifier:
 class GameManager:
     """Manages a single DND game session with AgentScope agents."""
 
-    def __init__(self, game_name: str):
+    def __init__(self, game_name: str, config_path: str = "config.yaml"):
         self.game_name = game_name
         game_dir = Path("dm_memory") / game_name
+
+        # Load config & create shared model
+        config = self._load_config(config_path)
+        api_cfg = config.get("api", {})
+        self.model = AnthropicChatModel(
+            credential=AnthropicCredential(
+                api_key=api_cfg.get("api_key") or os.environ.get("API_KEY", ""),
+                base_url=api_cfg.get("base_url", ""),
+            ),
+            model=api_cfg.get("model", "mimo-v2.5"),
+            stream=True,
+        )
 
         self.chat = ChatRoom(game_name)
         self.cards = PlayerCard(game_name)
@@ -171,6 +189,7 @@ class GameManager:
 
         self._running = False
         self.expected_player_count = 0  # set by game loop
+        self._agents_busy = 0  # heartbeat: skip when > 0
 
         # Event bus for streaming speech (asyncio.Queue)
         self._event_bus: asyncio.Queue = asyncio.Queue()
@@ -223,12 +242,29 @@ class GameManager:
             )
         return mem_dir
 
-    def _build_middlewares(self, memory_dir: str) -> list:
-        return [
+    def _build_middlewares(self, memory_dir: str, is_dm: bool = False) -> list:
+        mws = [
             GameLoggingMiddleware(game_name=self.game_name),
             GameContextCompressor(trigger_ratio=0.8, reserve_ratio=0.15),
             MemoryInjectorMiddleware(memory_dir=memory_dir, max_summary_chars=2000),
+            ChatContextMiddleware(game_name=self.game_name, room="酒馆大厅",
+                                  limit=30, is_dm=is_dm),
+            ToolCallCompactor(),
         ]
+        if is_dm:
+            mws.append(GamePhaseMiddleware(
+                game_name=self.game_name,
+                player_count=self.expected_player_count,
+            ))
+        return mws
+
+    @staticmethod
+    def _load_config(path: str) -> dict:
+        p = Path(path)
+        if p.exists():
+            with open(p, "r", encoding="utf-8") as f:
+                return yaml.safe_load(f) or {}
+        return {}
 
     def _get_lock(self, agent_name: str) -> asyncio.Lock:
         if agent_name not in self._agent_locks:
@@ -239,64 +275,53 @@ class GameManager:
     # Agent Creation
     # ============================================================
 
-    def create_dm_agent(self) -> Agent:
+    def create_dm_agent(self, state=None) -> Agent:
         dm_mem = self._create_memory_dir("DM")
 
         system_prompt = _read_role_file("DM.md")
         system_prompt += f"""
 
-## Current Game: {self.game_name}
+Current Game: {self.game_name}
+Players expected: {self.expected_player_count}
 
 Files:
-  dm_memory/{self.game_name}/adventure_text.json — the adventure module
+  dm_memory/{self.game_name}/adventure_text.json — the adventure module (full text)
   dm_memory/{self.game_name}/players/ — character cards
   dm_memory/{self.game_name}/game_memory.json — game state
 
-Important: The human specified {self.expected_player_count} players. Create exactly this many now.
+DM Guides (read these BEFORE describing scenes):
+  dnd_data/game_book/dm_guide_cos.md — overview, chapter structure, level table
+  dnd_data/game_book/cos_scenes.md — scene details, NPCs, combat, plot branches
+  dnd_data/game_book/cos_npcs.md — all NPC stats and dialogue
+  dnd_data/game_book/cos_full_guide.md — full plot, items, endings
 
-## Your Memory: {dm_mem}
-Private workspace for session notes, NPC tracking, plot ideas.
+Always combine guides with adventure_text.json to verify scenes are accurate.
 
-## Tools You Have
-- **Chat**: send/listen in 酒馆大厅 (public), DM-思考室 (private thinking)
-  Use action=create_room to create DM↔PL 1v1 rooms
-- **CreatePlayer**: spawn new Player agents (at startup or replacement)
-- **Card**: create/manage character cards
-- **Dice**: all dice rolls
-- **Read**: adventure text, rulebooks, YOUR memory only
-- **Write**: save to YOUR memory, game files
-- **GameState**: save/load game state
-- **WaitForMessages**: block until new messages arrive or you're signaled
-  Use this to yield your turn: WaitForMessages(room='酒馆大厅')
+Game Flow (follow this order)
+1. **Create Players**: Use CreatePlayer tool to create all {self.expected_player_count} players.
+2. **Guide Character Creation**: Ask each player ONE BY ONE about their character concept (race, class, background). After each player describes their character, use Card(action="create") to create their character card. Address players by name: "player1, 你是什么人？"
+3. **Opening Scene**: After all cards are created, narrate a brief opening scene to 酒馆大厅.
+4. **Advance Plot**: Describe the world, present challenges, react to player actions. You drive the story forward — don't let players chat aimlessly. If players are idle, introduce an NPC, describe an event, or ask "你们打算怎么做？"
 
-## Signal-Based Turn Control
-- After you narrate or address a player, call WaitForMessages(room='酒馆大厅').
-- Players will also wait. The human DM sends signals from the UI to wake specific players.
-- When a player responds, all agents see the message (room notification).
-- Read the message, decide if action is needed, then WaitForMessages again.
-
-## Rules
-- ❌ NEVER read player memory files
-- ❌ NEVER use templated speech like "tank/healer/dps/utility"
-- ❌ NEVER suggest what classes players should pick
+Rules
+- ALL communication MUST be in Chinese (中文)
+- NEVER read player memory files
+- NEVER use templated speech like "tank/healer/dps/utility"
+- NEVER suggest what classes players should pick
 - You are the cold, impartial world. Let players struggle.
 - Post thinking to 'DM-思考室', narrate scenes to '酒馆大厅'
-- 🌐 ALL communication MUST be in Chinese (中文)
-- 🎲 Players speak IN TURN: address them one at a time in order
-- 🎲 If a player says "(pass)", accept it and move to the next player
+- Address players by name when speaking to them
+- If a player says "(pass)", accept it and move to the next player
+- After narrating, call WaitForMessages(room='酒馆大厅') to yield your turn.
+- After creating a player with CreatePlayer, use Signal(target=player_name) to wake them.
 """
-
-        model = DeepSeekChatModel(
-            credential=DeepSeekCredential(
-                api_key=os.environ.get("DEEPSEEK_API_KEY", "")),
-            model="deepseek-chat", stream=True,
-        )
 
         from agentscope.tool._builtin import Bash, Grep, Glob
         toolkit = Toolkit(tools=[
             ChatTool(chat_room=self.chat, agent_name="DM",
                      notifier=self.notifier),
             CreatePlayerTool(game_manager=self, agent_name="DM"),
+            SignalTool(game_manager=self, agent_name="DM"),
             DiceTool(dice=self.dice),
             CardTool(player_card=self.cards, agent_name="DM"),
             GameReadTool(agent_name="DM", memory_dir=str(dm_mem)),
@@ -307,7 +332,8 @@ Private workspace for session notes, NPC tracking, plot ideas.
             Bash(), Grep(), Glob(),
         ])
 
-        state = AgentState()
+        if state is None:
+            state = AgentState()
         state.permission_context = PermissionContext(
             mode=PermissionMode.BYPASS,
             deny_rules={
@@ -324,10 +350,13 @@ Private workspace for session notes, NPC tracking, plot ideas.
             },
         )
 
+        from agentscope.agent._config import ReActConfig
+        react_config = ReActConfig(data={"max_iters": 50})
+
         self.dm_agent = Agent(
-            name="DM", system_prompt=system_prompt, model=model,
-            toolkit=toolkit, middlewares=self._build_middlewares(str(dm_mem)) + [GamePhaseMiddleware(game_name=self.game_name, player_count=self.expected_player_count)],
-            state=state,
+            name="DM", system_prompt=system_prompt, model=self.model,
+            toolkit=toolkit, middlewares=self._build_middlewares(str(dm_mem), is_dm=True),
+            state=state, react_config=react_config,
         )
         self.chat.register("DM", role="dm")
         return self.dm_agent
@@ -338,52 +367,28 @@ Private workspace for session notes, NPC tracking, plot ideas.
         system_prompt = _read_role_file("PLAYER.md")
         system_prompt += f"""
 
-## Your Identity
+Your Identity
 You are '{player_name}' in '{self.game_name}'.
 Character card: dm_memory/{self.game_name}/players/{player_name}.json
+Private journal: {pl_mem}/journal.md
 
-## Your Memory: {pl_mem}
-Private journal. Use Read/Write to track notes, clues, suspicions, goals.
-
-## Signal-Based Turn Play
-- 🎲 Players are woken by signals: either a room message or an explicit "your turn" signal.
-- 🎲 When you wake up, read messages. If the DM is addressing YOU, respond.
-- 🎲 If the message is NOT directed at you, just call WaitForMessages again.
-- 🎲 ONLY speak when addressed by DM or when it's clearly your turn.
-- 🎲 If you have nothing to say: Chat(action="send", room="酒馆大厅", content="(pass)")
-- 🎲 After speaking OR passing, call WaitForMessages(room='酒馆大厅').
-
-## What You Can Do
-- ✅ Chat: send/listen in 酒馆大厅 (public)
-- ✅ Dice: roll for attacks, saves, checks
-- ✅ Card: view your character sheet (action=get_summary)
-- ✅ Read: rulebooks, your card, your memory files
-- ✅ Write: your memory directory only
-- ✅ WaitForMessages: pause until new messages or your turn signal
-- 🌐 ALL roleplay, dialogue, and actions MUST be in Chinese (中文)
-
-## What You CANNOT Do
-- ❌ Read adventure_text, game_memory — DM-only (will be blocked)
-- ❌ Read other players' cards or memory
-- ❌ Access DM-思考室
-- ❌ Create players, save/load game state
-
-## How To Play
-1. Read chat: Chat(action="listen", room="酒馆大厅")
-2. Check yourself: Card(action="get_summary", name="{player_name}")
-3. Review journal: Read(file_path="{pl_mem}/journal.md")
-4. Only act if the DM is addressing you or it's clearly your turn
-5. Act: Chat(action="send", room="酒馆大厅", content="your action/dialogue")
-6. Take notes: Write(file_path="{pl_mem}/journal.md", content="...")
-7. Yield: WaitForMessages(room="酒馆大厅")
+Rules
+- ALL roleplay, dialogue, and actions MUST be in Chinese (中文)
+- When you wake up, check if the DM is addressing YOU. If yes, respond.
+- If the message is NOT directed at you, call WaitForMessages again.
+- ONLY speak when addressed by DM or when it's clearly your turn.
+- If you have nothing to say: Chat(action="send", room="酒馆大厅", content="(pass)")
+- After speaking OR passing, call WaitForMessages(room='酒馆大厅') to yield.
+- Use Card(action="get_summary", name="{player_name}") to check your sheet.
+- Use Read/Write to manage your journal notes.
+- NEVER read adventure_text, game_memory — DM-only (will be blocked)
+- NEVER read other players' cards or memory
+- NEVER access DM-思考室
+- NEVER play as NPC or other characters — you can only play yourself
+- NEVER invent plot, NPCs, or locations — all described by DM
 """
 
-        model = DeepSeekChatModel(
-            credential=DeepSeekCredential(
-                api_key=os.environ.get("DEEPSEEK_API_KEY", "")),
-            model="deepseek-chat", stream=True,
-        )
-
+        from agentscope.tool._builtin import Grep
         toolkit = Toolkit(tools=[
             ChatTool(chat_room=self.chat, agent_name=player_name,
                      notifier=self.notifier),
@@ -393,6 +398,7 @@ Private journal. Use Read/Write to track notes, clues, suspicions, goals.
             GameWriteTool(agent_name=player_name, memory_dir=str(pl_mem)),
             WaitForMessages(notifier=self.notifier, chat=self.chat,
                             agent_name=player_name),
+            Grep(),
         ])
 
         state = AgentState()
@@ -435,7 +441,7 @@ Private journal. Use Read/Write to track notes, clues, suspicions, goals.
         )
 
         agent = Agent(
-            name=player_name, system_prompt=system_prompt, model=model,
+            name=player_name, system_prompt=system_prompt, model=self.model,
             toolkit=toolkit, middlewares=self._build_middlewares(str(pl_mem)),
             state=state,
         )
@@ -496,19 +502,44 @@ Private journal. Use Read/Write to track notes, clues, suspicions, goals.
             return
 
         async with self._get_lock("DM"):
-            from agentscope.message import UserMsg
+            self._agents_busy += 1
+            try:
+                return await self._dm_reply_impl()
+            finally:
+                self._agents_busy -= 1
+
+    async def _dm_reply_impl(self):
+        from agentscope.message import UserMsg
+
+        # Detect phase from GamePhaseMiddleware
+        phase_mw = None
+        for mw in self.dm_agent._system_prompt_middlewares:
+            if isinstance(mw, GamePhaseMiddleware):
+                phase_mw = mw
+                break
+
+        existing = len(self.player_agents)
+        needed = self.expected_player_count
+
+        if existing < needed:
             prompt = (
-                f"Game '{self.game_name}' — your turn. "
-                f"Read latest messages: Chat(action=listen, room='酒馆大厅'). "
-                f"Check your memory notes. "
-                f"If first turn: create {self.expected_player_count} players with CreatePlayer, "
-                f"then announce opening scene to 酒馆大厅. "
-                f"If game in progress: respond to what happened, advance plot. "
-                f"Post thinking to 'DM-思考室'. Narrate to '酒馆大厅'. "
-                f"After narrating, call WaitForMessages(room='酒馆大厅') to yield."
+                f"[DM Turn] Create {needed - existing} players with CreatePlayer. "
+                f"Then Signal(all). Act then WaitForMessages."
             )
-            reply = await self.dm_agent.reply(UserMsg(name="system", content=prompt))
-            return reply.get_text_content() or ""
+        elif phase_mw and phase_mw._detect_phase()[0] == "character_creation":
+            created = phase_mw._get_created_players()
+            prompt = (
+                f"[DM Turn] Character creation: {len(created)}/{needed} cards. "
+                f"Ask next player their character concept, then Card(create). "
+                f"Act then WaitForMessages."
+            )
+        else:
+            prompt = (
+                f"[DM Turn] All {needed} cards created. "
+                f"Advance the plot. Act then WaitForMessages."
+            )
+        reply = await self.dm_agent.reply(UserMsg(name="system", content=prompt))
+        return reply.get_text_content() or ""
 
     # ── Player Turn ──
 
@@ -526,19 +557,14 @@ Private journal. Use Read/Write to track notes, clues, suspicions, goals.
             return
 
         async with self._get_lock(player_name):
-            from agentscope.message import UserMsg
-            prompt = (
-                f"Game '{self.game_name}'. You are '{player_name}'. "
-                f"Read chat: Chat(action=listen, room='酒馆大厅'). "
-                f"Check your card: Card(action=get_summary, name='{player_name}'). "
-                f"If the DM or another player is addressing you, respond in character. "
-                f"If the message is not directed at you, call "
-                f"WaitForMessages(room='酒馆大厅') to yield. "
-                f"After responding, save notes to journal, then "
-                f"WaitForMessages(room='酒馆大厅') to yield your turn."
-            )
-            reply = await agent.reply(UserMsg(name="system", content=prompt))
-            return reply.get_text_content() or ""
+            self._agents_busy += 1
+            try:
+                from agentscope.message import UserMsg
+                prompt = f"[Turn] {player_name}. Act then WaitForMessages."
+                reply = await agent.reply(UserMsg(name="system", content=prompt))
+                return reply.get_text_content() or ""
+            finally:
+                self._agents_busy -= 1
 
     # ── External Wait Handler ──
 
@@ -568,10 +594,10 @@ Private journal. Use Read/Write to track notes, clues, suspicions, goals.
 _game_managers: dict[str, GameManager] = {}
 
 
-def create_game_manager(game_name: str) -> GameManager:
+def create_game_manager(game_name: str, config_path: str = "config.yaml") -> GameManager:
     if game_name in _game_managers:
         return _game_managers[game_name]
-    manager = GameManager(game_name=game_name)
+    manager = GameManager(game_name=game_name, config_path=config_path)
     _game_managers[game_name] = manager
     return manager
 

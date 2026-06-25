@@ -5,7 +5,7 @@ Pure API server. Frontend is Vue 3 SPA served from static/ directory.
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import json, sqlite3, shutil, asyncio, logging, threading
+import io, json, sqlite3, shutil, asyncio, logging, threading
 from pathlib import Path
 from typing import Optional
 
@@ -46,33 +46,15 @@ def list_games() -> list[dict]:
     return games
 
 def prepare_game(game_name: str, pdf_file: str) -> dict:
+    game_dir = MEMORY_DIR / game_name
+    if (game_dir / "adventure_text.json").exists():
+        logger.info("Game '%s' already prepared, skipping.", game_name)
+        return {"status": "ok", "game": game_name, "skipped": True}
     from dm_agent import DM
     dm = DM("config.yaml")
     dm.prepare_game(rulebook_path=str(RULEBOOK_DIR), game_name=game_name, adventure_pdf_path=str(GAME_BOOK_DIR / pdf_file))
     return {"status": "ok", "game": game_name}
 
-def init_game_session(game_name: str) -> dict:
-    from game_engine.chat_room import ChatRoom
-    ChatRoom(game_name).register("DM", role="dm")
-    return {"status": "ok", "game": game_name, "dm_ready": True}
-
-def dm_login(game_name: str) -> dict:
-    from game_engine.chat_room import ChatRoom
-    ChatRoom(game_name).register("DM", role="dm")
-    return {"status": "ok", "game": game_name, "role": "dm"}
-
-def create_player(game_name: str, data: dict) -> dict:
-    from game_engine import PlayerCard
-    from game_engine.chat_room import ChatRoom
-    cards = PlayerCard(game_name)
-    card = cards.create(data["name"], data)
-    ChatRoom(game_name).register(data["name"], role="player")
-    return card
-
-def player_login(game_name: str, char_name: str) -> dict:
-    from game_engine.chat_room import ChatRoom
-    ChatRoom(game_name).register(char_name, role="player")
-    return {"status": "ok", "game": game_name, "character": char_name}
 
 async def save_game_async(game_name: str, label: str) -> dict:
     from game_engine.app import get_game_manager
@@ -80,7 +62,7 @@ async def save_game_async(game_name: str, label: str) -> dict:
     manager = get_game_manager(game_name)
     if manager:
         cp = CheckpointManager(game_name)
-        path = await cp.save(label, dm_agent=manager.dm_agent, player_agents=manager.player_agents)
+        path = await cp.save(label, dm_agent=manager.dm_agent, player_agents=manager.player_agents, manager=manager)
         return {"status": "ok", "path": path, "agents_saved": True}
     from game_engine import GameSession
     session = GameSession(game_name)
@@ -92,20 +74,91 @@ def save_game(game_name: str, label: str) -> dict:
     except RuntimeError: loop = asyncio.new_event_loop(); asyncio.set_event_loop(loop)
     return loop.run_until_complete(save_game_async(game_name, label))
 
-def load_game(game_name: str, save_label: str) -> dict:
-    from game_engine import GameSession
-    s = GameSession(game_name); s.login_as_dm("DM"); s.load(save_label); s.login_as_dm("DM")
-    return {"status": "ok"}
-
-def list_saves(game_name: str) -> list[dict]:
-    from game_engine import GameSession
-    s = GameSession(game_name); s.login_as_dm("DM")
-    return s.list_saves()
-
 def delete_player(game_name: str, char_name: str) -> dict:
     from game_engine import PlayerCard
     PlayerCard(game_name).delete(char_name)
     return {"status": "ok"}
+
+def list_saves(game_name: str) -> list[dict]:
+    from game_engine.checkpoint import CheckpointManager
+    # New checkpoint system
+    saves = CheckpointManager(game_name).list_checkpoints()
+    # Also check old GameSession saves directory
+    old_saves_dir = Path("dm_memory") / game_name / "saves"
+    if old_saves_dir.exists():
+        for d in sorted(old_saves_dir.iterdir(), reverse=True):
+            if d.is_dir() and not d.name.startswith("."):
+                saves.append({
+                    "checkpoint_name": d.name,
+                    "label": d.name,
+                    "created_at": "",
+                    "source": "legacy",
+                })
+    return saves
+
+async def load_game_async(game_name: str, checkpoint_name: str = "") -> dict:
+    from game_engine.checkpoint import CheckpointManager
+    cp = CheckpointManager(game_name)
+    checkpoints = cp.list_checkpoints()
+    # Also check legacy saves
+    old_saves_dir = Path("dm_memory") / game_name / "saves"
+    if old_saves_dir.exists():
+        for d in sorted(old_saves_dir.iterdir(), reverse=True):
+            if d.is_dir() and not d.name.startswith("."):
+                checkpoints.append({"checkpoint_name": d.name, "source": "legacy"})
+    if not checkpoints:
+        return {"status": "error", "message": "No checkpoints found"}
+    target = checkpoint_name or checkpoints[0]["checkpoint_name"]
+    # Check if it's a legacy save
+    legacy_dir = old_saves_dir / target if old_saves_dir.exists() else None
+    if legacy_dir and legacy_dir.exists():
+        # Legacy restore: copy files back
+        game_dir = Path("dm_memory") / game_name
+        for item in ["chat.db", "game_memory.json"]:
+            src = legacy_dir / item
+            if src.exists():
+                shutil.copy2(src, game_dir / item)
+        players_src = legacy_dir / "players"
+        if players_src.exists():
+            players_dst = game_dir / "players"
+            if players_dst.exists(): shutil.rmtree(players_dst)
+            shutil.copytree(players_src, players_dst)
+        # Discover player names from restored cards
+        players_dir = game_dir / "players"
+        player_names = [p.stem for p in players_dir.glob("*.json")] if players_dir.exists() else []
+        if not player_names:
+            player_names = [f"player{i}" for i in range(1, 5)]
+        start_agents(game_name, player_names)
+        return {"status": "ok", "checkpoint": target, "players": player_names, "source": "legacy"}
+    # New checkpoint format: restore files + agent states
+    result = await cp.restore(target)
+    runtime = result.get("runtime", {})
+    agent_states = result.get("agent_states", {})
+    player_names = result.get("meta", {}).get("player_names", [])
+    if not player_names:
+        players_dir = Path("dm_memory") / game_name / "players"
+        player_names = [p.stem for p in players_dir.glob("*.json")] if players_dir.exists() else []
+    if not player_names:
+        player_names = [f"player{i}" for i in range(1, runtime.get("expected_player_count", 4) + 1)]
+    # Start agents with restored states
+    start_agents_with_state(game_name, player_names, agent_states, runtime)
+    return {"status": "ok", "checkpoint": target, "players": player_names,
+            "dead": runtime.get("dead_players", []),
+            "agent_states_restored": len(agent_states)}
+    runtime = result.get("runtime", {})
+    player_count = runtime.get("expected_player_count", 0)
+    player_names = result.get("meta", {}).get("player_names", [])
+    if not player_names:
+        # Discover from restored player cards
+        players_dir = Path("dm_memory") / game_name / "players"
+        if players_dir.exists():
+            player_names = [p.stem for p in players_dir.glob("*.json")]
+    if not player_names:
+        player_names = [f"player{i}" for i in range(1, player_count + 1)]
+    start_agents(game_name, player_names)
+    return {"status": "ok", "checkpoint": target, "players": player_names,
+            "dead": runtime.get("dead_players", []),
+            "expected_player_count": player_count}
 
 def _generate_player_names(count: int) -> list[str]:
     return [f"player{i}" for i in range(1, int(count) + 1)]
@@ -144,7 +197,7 @@ class GameReader:
             card = json.loads(f.read_text())
             hp = card.get("combat", {})
             ab = card.get("abilities", {})
-            result.append({"name": card["name"], "player": card.get("player_name",""), "race": card["race"], "class": card["class_"], "level": card["level"], "hp": f"{hp.get('hp_current','?')}/{hp.get('hp_max','?')}", "hp_pct": round(hp.get("hp_current",0)/max(hp.get("hp_max",1),1)*100), "ac": hp.get("ac","?"), "abilities": {k:f"{v} ({(v-10)//2:+d})" for k,v in ab.items()} if ab else {}, "backstory": card.get("backstory","")[:80]})
+            result.append({"name": card.get("name",""), "player": card.get("player_name",""), "race": card.get("race",""), "class": card.get("class_", card.get("class","")), "level": card.get("level",1), "hp": f"{hp.get('hp_current','?')}/{hp.get('hp_max','?')}", "hp_pct": round(hp.get("hp_current",0)/max(hp.get("hp_max",1),1)*100), "ac": hp.get("ac","?"), "abilities": {k:f"{v} ({(v-10)//2:+d})" for k,v in ab.items()} if ab else {}, "backstory": card.get("backstory","")[:80]})
         return result
 
     def game_state(self) -> dict:
@@ -180,7 +233,7 @@ def _send_heartbeat(manager):
     try:
         pub_id = manager._get_room_id("酒馆大厅")
         if pub_id:
-            manager.chat.send_system(pub_id, "❤️ 心跳 — 所有冒险者都在等待。地下城主，请推进剧情。")
+            manager.chat.send_system(pub_id, "[心跳] 所有冒险者都在等待。地下城主，请推进剧情。")
         manager.notifier.notify("酒馆大厅")
         manager.notifier.notify_agent("DM", reason="heartbeat")
     except Exception as e:
@@ -190,40 +243,65 @@ def _send_heartbeat(manager):
 async def _dm_background_loop(manager):
     """DM agent runs continuously in background, blocking on WaitForMessages."""
     logger.info("[%s] DM background loop started", manager.game_name)
+    consecutive_errors = 0
     while manager._running:
         try:
             await manager.dm_observe_and_reply()
+            consecutive_errors = 0
         except Exception as e:
-            logger.error("[%s] DM background error: %s", manager.game_name, e)
-            await asyncio.sleep(2)
+            consecutive_errors += 1
+            if consecutive_errors >= 3:
+                logger.error("[%s] DM: %d consecutive errors, stopping: %s",
+                             manager.game_name, consecutive_errors, e)
+                break
+            logger.error("[%s] DM background error (%d/3): %s",
+                         manager.game_name, consecutive_errors, e)
+            await asyncio.sleep(2 * consecutive_errors)
 
 
 async def _player_background_loop(manager, player_name: str):
     """Player agent runs continuously, only acts when signaled or addressed."""
     logger.info("[%s] Player '%s' background loop started", manager.game_name, player_name)
+    consecutive_errors = 0
     while manager._running and player_name not in manager._dead_players:
         try:
             await manager.player_observe_and_reply(player_name)
+            consecutive_errors = 0
         except Exception as e:
-            logger.error("[%s] Player '%s' bg error: %s", manager.game_name, player_name, e)
-            await asyncio.sleep(2)
+            consecutive_errors += 1
+            if consecutive_errors >= 3:
+                logger.error("[%s] Player '%s': %d consecutive errors, stopping: %s",
+                             manager.game_name, player_name, consecutive_errors, e)
+                break
+            logger.error("[%s] Player '%s' bg error (%d/3): %s",
+                         manager.game_name, player_name, consecutive_errors, e)
+            await asyncio.sleep(2 * consecutive_errors)
     logger.info("[%s] Player '%s' background loop ended", manager.game_name, player_name)
 
 
 async def _heartbeat_monitor(manager):
-    """Monitor for silence and send heartbeat to DM."""
-    await asyncio.sleep(10)  # initial grace period
+    """Monitor for silence and send heartbeat to DM.
+
+    Only fires when ALL agents are idle (not generating).
+    Tracks busy state via manager._agents_busy counter.
+    """
+    await asyncio.sleep(60)  # initial grace period
     silent_checks = 0
     last_count = _count_chat_msgs(manager)
     while manager._running:
-        await asyncio.sleep(15)  # check every 15s
+        await asyncio.sleep(30)
         if not manager._running:
             break
+        # Skip heartbeat if any agent is actively generating
+        if manager._agents_busy > 0:
+            silent_checks = 0
+            last_count = _count_chat_msgs(manager)
+            continue
         current = _count_chat_msgs(manager)
         if current == last_count:
             silent_checks += 1
-            if silent_checks >= 2:  # 30s of silence
-                logger.info("[%s] Heartbeat: %ds silent — waking DM", manager.game_name, silent_checks * 15)
+            if silent_checks >= 2:  # 60s of silence
+                logger.info("[%s] Heartbeat: %ds silent — waking DM", manager.game_name, silent_checks * 30)
                 _send_heartbeat(manager)
                 silent_checks = 0
         else:
@@ -231,11 +309,24 @@ async def _heartbeat_monitor(manager):
         last_count = current
 
 
-async def _agent_game_loop(game_name: str, player_names: list[str]):
+async def _agent_game_loop(game_name: str, player_names: list[str], agent_states: dict = None, runtime: dict = None):
     from game_engine.app import create_game_manager
+    from agentscope.state import AgentState
     manager = create_game_manager(game_name)
-    manager.expected_player_count = len(player_names)
-    manager.create_dm_agent()
+    manager.expected_player_count = runtime.get("expected_player_count", len(player_names)) if runtime else len(player_names)
+    # Restore dead players
+    if runtime:
+        for name in runtime.get("dead_players", []):
+            manager._dead_players.add(name)
+    # Create DM agent (with restored state if available)
+    dm_state = None
+    if agent_states and "DM" in agent_states:
+        try:
+            dm_state = AgentState.model_validate(agent_states["DM"])
+            logger.info("[%s] Restored DM agent state (%d context msgs)", game_name, len(dm_state.context))
+        except Exception as e:
+            logger.warning("[%s] Failed to restore DM state: %s", game_name, e)
+    manager.create_dm_agent(state=dm_state)
     await manager.start_game()
     _agent_running[game_name] = True
     _agent_paused[game_name] = False
@@ -306,6 +397,22 @@ def start_agents(game_name: str, player_names: list[str]):
     t = threading.Thread(target=run_loop, daemon=True, name=f"agents-{game_name}")
     t.start()
     return {"status": "started", "game": game_name, "players": player_names}
+
+
+def start_agents_with_state(game_name: str, player_names: list[str], agent_states: dict, runtime: dict):
+    if _agent_running.get(game_name, False):
+        return {"status": "already_running"}
+    loop = asyncio.new_event_loop()
+    task = loop.create_task(_agent_game_loop(game_name, player_names, agent_states, runtime))
+    _agent_loops[game_name] = task
+
+    def run_loop():
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(task)
+
+    t = threading.Thread(target=run_loop, daemon=True, name=f"agents-{game_name}")
+    t.start()
+    return {"status": "started", "game": game_name, "players": player_names, "restored": True}
 
 
 def stop_agents(game_name: str):
@@ -383,9 +490,6 @@ async def api_state(game_name: str): return JSONResponse(GameReader(game_name).g
 @app.get("/api/games/{game_name}/dice_log")
 async def api_dice_log(game_name: str): return JSONResponse(GameReader(game_name).dice_log())
 
-@app.get("/api/games/{game_name}/saves")
-async def api_saves(game_name: str): return JSONResponse(list_saves(game_name))
-
 @app.get("/api/games/{game_name}/agents/status")
 async def api_agent_status(game_name: str): return JSONResponse(agent_status(game_name))
 
@@ -429,19 +533,8 @@ async def api_events(game_name: str, room: str = Query(default="\u9152\u9986\u59
 @app.post("/api/games/create")
 async def api_create_game(request: Request):
     body = await request.json(); gname = body["game_name"]
-    r1 = prepare_game(gname, body["pdf_file"]); r2 = init_game_session(gname)
-    return JSONResponse({"status": "ok", "game": gname, **r2})
-
-@app.post("/api/games/{game_name}/dm/login")
-async def api_dm_login(game_name: str): return JSONResponse(dm_login(game_name))
-
-@app.post("/api/games/{game_name}/players/create")
-async def api_create_player(game_name: str, request: Request):
-    return JSONResponse(create_player(game_name, await request.json()))
-
-@app.post("/api/games/{game_name}/players/login")
-async def api_player_login(game_name: str, request: Request):
-    body = await request.json(); return JSONResponse(player_login(game_name, body["name"]))
+    r = prepare_game(gname, body["pdf_file"])
+    return JSONResponse({"status": "ok", "game": gname, **r})
 
 @app.post("/api/games/{game_name}/players/delete")
 async def api_delete_player(game_name: str, request: Request):
@@ -451,9 +544,13 @@ async def api_delete_player(game_name: str, request: Request):
 async def api_save(game_name: str, request: Request):
     body = await request.json(); return JSONResponse(save_game(game_name, body.get("label", "\u624b\u52a8\u5b58\u6863")))
 
+@app.get("/api/games/{game_name}/saves")
+async def api_saves(game_name: str): return JSONResponse(list_saves(game_name))
+
 @app.post("/api/games/{game_name}/load")
 async def api_load(game_name: str, request: Request):
-    body = await request.json(); return JSONResponse(load_game(game_name, body["label"]))
+    body = await request.json()
+    return JSONResponse(await load_game_async(game_name, body.get("checkpoint", "")))
 
 @app.post("/api/games/{game_name}/agents/start")
 async def api_start_agents(game_name: str, request: Request):
@@ -469,6 +566,19 @@ async def api_pause_agents(game_name: str): return JSONResponse(pause_agents(gam
 
 @app.post("/api/games/{game_name}/agents/resume")
 async def api_resume_agents(game_name: str): return JSONResponse(resume_agents(game_name))
+
+@app.get("/api/games/{game_name}/export")
+async def api_export(game_name: str, room: str = Query(default="酒馆大厅")):
+    from game_engine.chat_renderer import render_chat_images
+    try:
+        zip_bytes = render_chat_images(game_name, room)
+        return StreamingResponse(
+            io.BytesIO(zip_bytes),
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename={game_name}_chat.zip"},
+        )
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
 
 @app.post("/api/games/{game_name}/signal")
 async def api_signal(game_name: str, request: Request):

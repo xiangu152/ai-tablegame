@@ -45,14 +45,24 @@ const PlayerPanel = {
       ]);
       this.status = st;
       const deadSet = new Set(st ? (st.dead || []) : []);
-      const playerNames = new Set(st ? (st.players || []) : []);
+      const agentNames = st ? (st.players || []) : [];
+      // Build card lookup from /players (only those with cards)
+      const cardMap = {};
+      (pls || []).forEach(p => { cardMap[p.name] = p; });
+      // Merge: all agents from status + card data where available
+      const allPlayers = agentNames.map(name => {
+        const card = cardMap[name] || {};
+        return {
+          name,
+          ...card,
+          dead: deadSet.has(name),
+          status: deadSet.has(name) ? 'dead' : 'active',
+          statusLabel: deadSet.has(name) ? '💀 Dead' : (card.level ? `Lv.${card.level}` : 'Active'),
+        };
+      });
       this.players = [
         { name: 'DM', status: (st && st.running) ? 'active' : 'waiting', statusLabel: st && st.running ? 'DM' : 'Waiting' },
-        ...(pls || []).map(p => ({
-          ...p, dead: deadSet.has(p.name),
-          status: deadSet.has(p.name) ? 'dead' : (playerNames.has(p.name) ? 'active' : 'waiting'),
-          statusLabel: deadSet.has(p.name) ? 'Dead' : (playerNames.has(p.name) ? 'Active' : 'Waiting'),
-        })),
+        ...allPlayers,
       ];
     },
     async signal(name) { this.$emit('signal', name); await apiPost('/api/games/' + this.game + '/signal', { target: name }); },

@@ -51,6 +51,7 @@ class CheckpointManager:
         label: str,
         dm_agent=None,
         player_agents: dict | None = None,
+        manager=None,
     ) -> str:
         """Create a full checkpoint.
 
@@ -58,6 +59,7 @@ class CheckpointManager:
             label: Human-readable label (e.g. "before-death-house")
             dm_agent: The DM AgentScope Agent instance (to save AgentState)
             player_agents: Dict of player_name → Agent instances
+            manager: GameManager instance (for runtime state: dead_players, etc.)
 
         Returns:
             Path to the checkpoint directory.
@@ -106,8 +108,25 @@ class CheckpointManager:
                 shutil.rmtree(players_dst)
             shutil.copytree(players_src, players_dst)
 
-        # 6. Save checkpoint metadata
+        # 6. Copy agent memory directories
+        mem_src = self.game_dir / "memory"
+        if mem_src.exists():
+            mem_dst = cp_dir / "memory"
+            if mem_dst.exists():
+                shutil.rmtree(mem_dst)
+            shutil.copytree(mem_src, mem_dst)
+
+        # 7. Save runtime game state
         agent_count = 1 + (len(player_agents) if player_agents else 0)
+        runtime = {
+            "expected_player_count": getattr(manager, "expected_player_count", 0) if manager else 0,
+            "dead_players": list(getattr(manager, "_dead_players", set())) if manager else [],
+            "room_cursors": dict(getattr(manager, "_room_cursors", {})) if manager else {},
+        }
+        (cp_dir / "runtime_state.json").write_text(
+            json.dumps(runtime, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        # 8. Save checkpoint metadata
         meta = {
             "checkpoint_name": cp_name,
             "label": label or cp_name,
@@ -115,6 +134,7 @@ class CheckpointManager:
             "created_at": datetime.now(timezone.utc).isoformat(),
             "agent_count": agent_count,
             "player_names": list(player_agents.keys()) if player_agents else [],
+            "dead_players": runtime["dead_players"],
         }
         (cp_dir / "checkpoint_meta.json").write_text(
             json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -205,7 +225,15 @@ class CheckpointManager:
                 shutil.rmtree(players_dst)
             shutil.copytree(players_src, players_dst)
 
-        # 5. Load agent states
+        # 5. Restore agent memory directories
+        mem_src = cp_dir / "memory"
+        if mem_src.exists():
+            mem_dst = self.game_dir / "memory"
+            if mem_dst.exists():
+                shutil.rmtree(mem_dst)
+            shutil.copytree(mem_src, mem_dst)
+
+        # 6. Load agent states
         agent_states = {}
         agents_dir = cp_dir / "agents"
         if agents_dir.exists():
@@ -219,6 +247,12 @@ class CheckpointManager:
                 except Exception as e:
                     logger.error("Failed to load %s state: %s", agent_name, e)
 
+        # 7. Load runtime game state
+        runtime = {}
+        runtime_path = cp_dir / "runtime_state.json"
+        if runtime_path.exists():
+            runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
+
         meta = {}
         meta_path = cp_dir / "checkpoint_meta.json"
         if meta_path.exists():
@@ -228,6 +262,7 @@ class CheckpointManager:
             "checkpoint_name": cp_dir.name,
             "meta": meta,
             "agent_states": agent_states,
+            "runtime": runtime,
         }
 
     def _resolve_checkpoint(self, name_or_label: str) -> Optional[Path]:

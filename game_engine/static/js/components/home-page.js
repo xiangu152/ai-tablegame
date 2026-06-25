@@ -27,6 +27,7 @@ const HomePage = {
           <template v-if="g.prepared">
             <button class="btn btn-primary btn-small" @click="$emit('enter-dm', g.name)">DM</button>
             <button class="btn btn-secondary btn-small" @click="$emit('enter-player', g.name)">Player</button>
+            <button v-if="g.saves > 0" class="btn btn-secondary btn-small" @click="loadGame(g.name)" style="margin-left:4px">Load</button>
           </template>
           <span v-else style="color:#888;font-size:11px">Not prepared</span>
         </div>
@@ -73,6 +74,20 @@ const HomePage = {
       this.$loading.hide();
       alert('Agents did not start in time. Check server logs.');
       this.creating = false;
+    },
+    async loadGame(name) {
+      this.$loading.show('Loading checkpoint...');
+      const r = await apiPost('/api/games/' + name + '/load', {});
+      if (!r || r.status !== 'ok') { this.$loading.hide(); return alert('Load failed: ' + (r && r.message || 'unknown')); }
+      this.$loading.update('Starting agents...');
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const st = await apiGet('/api/games/' + name + '/agents/status');
+        if (st && st.running) { this.$loading.hide(); this.$emit('enter-dm', name); return; }
+        this.$loading.update('Starting agents... (' + (i+1)*2 + 's)');
+      }
+      this.$loading.hide();
+      alert('Agents did not start in time.');
     },
   },
 };

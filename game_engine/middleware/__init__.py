@@ -10,10 +10,14 @@ from .game_logging import GameLoggingMiddleware
 from .context_compressor import GameContextCompressor
 from .memory_injector import MemoryInjectorMiddleware
 from .game_phase import GamePhaseMiddleware
+from .chat_context import ChatContextMiddleware
+from .tool_compactor import ToolCallCompactor
 
 __all__ = [
     "GameLoggingMiddleware",
     "GameContextCompressor",
-    "GamePhaseMiddleware",
     "MemoryInjectorMiddleware",
+    "GamePhaseMiddleware",
+    "ChatContextMiddleware",
+    "ToolCallCompactor",
 ]

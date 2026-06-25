@@ -13,11 +13,13 @@ const StatusBar = {
         {{ status.paused ? '▶ Resume' : '⏯ Pause' }}
       </button>
       <button v-if="status && status.running" class="btn btn-danger btn-small" @click="stop">⏹ Stop</button>
+      <button class="btn btn-secondary btn-small" @click="$emit('save-game')">Save</button>
+      <button class="btn btn-secondary btn-small" @click="$emit('export-chat')">Export</button>
       <button class="btn btn-secondary btn-small" @click="$emit('back')">← Back</button>
     </div>
   </div>`,
   props: { title: String, game: String },
-  emits: ['back'],
+  emits: ['back', 'export-chat', 'save-game'],
   data() { return { status: null, timer: null }; },
   async mounted() { if (this.game) { await this.poll(); this.timer = setInterval(() => this.poll(), 3000); } },
   beforeUnmount() { if (this.timer) clearInterval(this.timer); },

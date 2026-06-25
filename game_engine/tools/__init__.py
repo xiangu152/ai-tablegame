@@ -16,6 +16,7 @@ from .write_tool import GameWriteTool
 from .game_state_tool import GameStateTool
 from .wait_tool import WaitForMessages
 from .create_player_tool import CreatePlayerTool
+from .signal_tool import SignalTool
 
 __all__ = [
     "ChatTool",
@@ -26,4 +27,5 @@ __all__ = [
     "GameStateTool",
     "WaitForMessages",
     "CreatePlayerTool",
+    "SignalTool",
 ]

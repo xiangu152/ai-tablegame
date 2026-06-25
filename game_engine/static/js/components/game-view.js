@@ -5,7 +5,7 @@
 const GameView = {
   template: `
   <div class="game-layout">
-    <status-bar :title="title" :game="game" @back="$emit('back')" />
+    <status-bar :title="title" :game="game" @back="$emit('back')" @export-chat="exportChat" @save-game="saveGame" />
     <div class="game-body">
       <room-sidebar :game="game" :selected="room" @select="onRoom" />
       <chat-area ref="chat" :game="game" :room="room" @new-message="onMsg" />
@@ -26,8 +26,17 @@ const GameView = {
       // Could trigger dice log refresh, sound effects, etc.
     },
     onSignal(target) {
-      // Could show a toast notification
       console.log('Signal sent to:', target);
+    },
+    exportChat() {
+      const url = API + '/api/games/' + this.game + '/export?room=' + encodeURIComponent(this.room);
+      const a = document.createElement('a');
+      a.href = url; a.download = this.game + '_chat.zip';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    },
+    async saveGame() {
+      const r = await apiPost('/api/games/' + this.game + '/save', { label: 'auto' });
+      alert(r && r.status === 'ok' ? '存档成功' : '存档失败');
     },
   },
 };

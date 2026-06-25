@@ -141,6 +141,25 @@ class ChatTool(ToolBase):
                         state=ToolResultState.ERROR,
                     )
                 result = self._send(room, content, target)
+                # Player auto-block: after sending, immediately wait for signal
+                if self._agent_name != "DM" and self._notifier:
+                    was_signaled, reason = await self._notifier.wait_room_or_signal(
+                        room=room, agent_name=self._agent_name, timeout=120.0)
+                    # Read new messages after waking
+                    new_msgs = []
+                    token = self._chat.get_token(self._agent_name)
+                    if token:
+                        for r in self._chat.list_rooms(token):
+                            if r["name"] == room:
+                                msgs = self._chat.read(token, r["id"], limit=5)
+                                new_msgs = [f"[{m.get('from','?')}]: {m.get('content','')[:100]}" for m in msgs[-3:]]
+                                break
+                    wake_info = f"Wake reason: {reason}"
+                    if new_msgs:
+                        wake_info += "\n" + "\n".join(new_msgs)
+                    return ToolChunk(
+                        content=[TextBlock(text=f"Message sent to {room}. Blocked until signal.\n{wake_info}")],
+                    )
                 return ToolChunk(
                     content=[TextBlock(text=f"Message sent to {room}: {content[:200]}")],
                 )
@@ -206,6 +225,7 @@ class ChatTool(ToolBase):
             result = self._chat.register(self._agent_name, role=role)
             token = result["token"]
 
+        # Check agent's own rooms first
         rooms = self._chat.list_rooms(token)
         room_id = None
         for r in rooms:
@@ -214,14 +234,26 @@ class ChatTool(ToolBase):
                 break
 
         if not room_id:
-            # Auto-create public room
+            # Check if a public room with this name already exists (created by another agent)
+            for r in self._chat.list_public_rooms():
+                if r["name"] == room:
+                    room_id = r["id"]
+                    # Join this room so the agent becomes a member
+                    try:
+                        self._chat.join_room(token, room_id)
+                    except Exception:
+                        pass  # already a member
+                    break
+
+        if not room_id:
+            # Create new public room
             room_id = self._chat.create_room(token, room, "public")["id"]
 
         result = self._chat.send(token, room_id, content)
-        # Event-driven wake: notify agents waiting on this room
+        # Wake strategy: only wake DM on any message. Players are woken ONLY by Signal tool.
         if self._notifier:
-            self._notifier.notify(room)
-            # Also notify specific target if this is a private/1v1 room
+            if self._agent_name != "DM":
+                self._notifier.notify_agent("DM", reason="player_message")
             if target:
                 self._notifier.notify_agent(target)
         return result
@@ -232,12 +264,24 @@ class ChatTool(ToolBase):
         if not token:
             return []
 
+        # Check agent's own rooms first
         rooms = self._chat.list_rooms(token)
         room_id = None
         for r in rooms:
             if r["name"] == room or r["id"] == room:
                 room_id = r["id"]
                 break
+
+        if not room_id:
+            # Check public rooms created by other agents
+            for r in self._chat.list_public_rooms():
+                if r["name"] == room:
+                    room_id = r["id"]
+                    try:
+                        self._chat.join_room(token, room_id)
+                    except Exception:
+                        pass
+                    break
 
         if not room_id:
             return []

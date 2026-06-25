@@ -1,5 +1,5 @@
 
 api:
-  base_url: https://api.deepseek.com/anthropic
-  api_key: sk-cd99e37964bf421fa065a047e216073c
-  model: deepseek-v4-pro
+  base_url: https://token-plan-cn.xiaomimimo.com/anthropic
+  api_key: tp-cp5enms8jzrk1udnguf1rc29l1ct0hovqc00i1vk9fklwvsg
+  model: mimo-v2.5
