@@ -1,0 +1,53 @@
+{
+  "name": "艾琳娜",
+  "race": "半精灵",
+  "class": "游荡者",
+  "level": 1,
+  "background": "罪犯",
+  "alignment": "混乱中立",
+  "hp": 10,
+  "max_hp": 10,
+  "temp_hp": 0,
+  "ac": 15,
+  "speed": 30,
+  "initiative": 3,
+  "proficiency_bonus": 2,
+  "ability_scores": {
+    "strength": 8,
+    "dexterity": 16,
+    "constitution": 14,
+    "intelligence": 10,
+    "wisdom": 12,
+    "charisma": 16
+  },
+  "saving_throws": {
+    "dexterity": 5,
+    "intelligence": 2
+  },
+  "skills": {
+    "隐匿": 5,
+    "巧手": 5,
+    "偷窃": 5,
+    "感知": 3,
+    "洞察": 3,
+    "欺骗": 5
+  },
+  "tool_proficiencies": ["盗贼工具"],
+  "weapon_proficiencies": ["简易武器", "手弩", "长剑", "细剑", "短剑"],
+  "armor_proficiencies": ["轻甲"],
+  "attacks": [
+    {"name": "细剑", "damage": "1d8+3", "type": "穿刺", "range": "近战"},
+    {"name": "匕首", "damage": "1d4+3", "type": "穿刺", "range": "近战/投掷"},
+    {"name": "手弩", "damage": "1d6+3", "type": "穿刺", "range": "30/120尺"}
+  ],
+  "racial_traits": ["黑暗视觉60尺", "精类血统（对魅惑豁免有优势）", "多才多艺（额外2个技能熟练）"],
+  "class_features": ["偷袭（1d6额外伤害）", "盗贼暗语", "专精：盗贼工具"],
+  "inventory": ["皮甲", "细剑", "匕首×2", "手弩", "弩矢×20", "盗贼工具", "窃贼背包", "暗色斗篷", "金币：15gp"],
+  "backstory": "在巴罗维亚边境小镇长大，从小跟着老盗贼学艺。靠开锁、潜行、在暗巷里找活干为生。接了一单护送委托后失去记忆，醒来时发现自己在这间陌生的酒馆中。",
+  "personality": {
+    "traits": "冷静克制，观察力极强，不轻易信任他人",
+    "ideals": "自由——我为自己而活，不受任何人束缚",
+    "bonds": "那个老盗贼师父是我唯一信任过的人",
+    "flaws": "过度警惕，有时会错过合作的机会"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "未命名",
+  "race": "未知",
+  "class": "未知",
+  "level": 1,
+  "background": "未知",
+  "hp": 0,
+  "max_hp": 0,
+  "ac": 10,
+  "speed": 30,
+  "stats": {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10},
+  "player_agent": "玩家1",
+  "status": "pending_creation",
+  "note": "玩家1跳过了角色介绍"
+}

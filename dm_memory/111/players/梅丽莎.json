@@ -1,0 +1,60 @@
+{
+  "name": "梅丽莎",
+  "race": "人类",
+  "class": "德鲁伊",
+  "subclass": "无",
+  "level": 1,
+  "background": "草药师",
+  "alignment": "中立善良",
+  "hp": 10,
+  "max_hp": 10,
+  "temp_hp": 0,
+  "ac": 15,
+  "speed": 30,
+  "initiative": 1,
+  "proficiency_bonus": 2,
+  "ability_scores": {
+    "strength": 8,
+    "dexterity": 13,
+    "constitution": 14,
+    "intelligence": 12,
+    "wisdom": 15,
+    "charisma": 10
+  },
+  "saving_throws": {
+    "intelligence": 3,
+    "wisdom": 4
+  },
+  "skills": {
+    "自然": 3,
+    "医药": 2,
+    "感知": 4,
+    "动物驯养": 2
+  },
+  "tool_proficiencies": ["药草工具", "炼金工具"],
+  "weapon_proficiencies": ["匕首", "飞镖", "投石索", "木棒", "长剑", "短剑"],
+  "armor_proficiencies": ["轻甲（非金属）", "中甲（非金属）", "盾牌（非金属）"],
+  "spellcasting": {
+    "ability": "wisdom",
+    "spell_save_dc": 12,
+    "spell_attack_modifier": 4,
+    "spell_slots": {"1": 2},
+    "cantrips": ["缠绕术", "星火术", "毒气喷射"],
+    "known_spells_1st_level": ["治愈创伤", "纠缠术", "召唤动物伙伴", "月光术", "野兽交谈"]
+  },
+  "attacks": [
+    {"name": "弹弓", "damage": "1d4+1", "type": "钝击", "range": "30/120尺"},
+    {"name": "匕首", "damage": "1d4-1", "type": "穿刺", "range": "近战/投掷"}
+  ],
+  "racial_traits": ["额外语言1种", "多才多艺（起源专长）"],
+  "class_features": ["德鲁伊语", "自身变形（2次/短休）", "野性之心"],
+  "druidic_focus": "草药束",
+  "inventory": ["皮甲（非金属）", "弹弓", "弹丸×20", "匕首", "药草工具", "炼金工具", "草药背包", "干燥草药束", "金币：8gp"],
+  "backstory": "在家乡小镇经营小药铺，替人配药、疗伤、熬制汤剂。熟悉草药、毒物和偏方，但没什么战斗能力。那天晚上在药铺后院晒药草时，雾突然变得很浓，然后失去记忆，醒来时发现自己在这间陌生的酒馆中。",
+  "personality": {
+    "traits": "温柔善良，对生命有深切的关怀，但有时会因恐惧而犹豫",
+    "ideals": "治愈——每一个生命都值得被拯救",
+    "bonds": "小镇上的病人和药铺是我的全部，我必须回去",
+    "flaws": "面对危险时容易恐慌，需要他人的鼓励才能鼓起勇气"
+  }
+}

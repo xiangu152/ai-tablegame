@@ -1,0 +1,53 @@
+{
+  "name": "索伦",
+  "race": "人类",
+  "class": "战士",
+  "subclass": "无",
+  "level": 1,
+  "background": "士兵",
+  "alignment": "守序中立",
+  "hp": 12,
+  "max_hp": 12,
+  "temp_hp": 0,
+  "ac": 17,
+  "speed": 30,
+  "initiative": 1,
+  "proficiency_bonus": 2,
+  "ability_scores": {
+    "strength": 15,
+    "dexterity": 13,
+    "constitution": 14,
+    "intelligence": 10,
+    "wisdom": 12,
+    "charisma": 8
+  },
+  "saving_throws": {
+    "strength": 4,
+    "constitution": 4
+  },
+  "skills": {
+    "运动": 4,
+    "求生": 2,
+    "威吓": 1,
+    "洞察": 2
+  },
+  "tool_proficiencies": ["骰子", "骨牌"],
+  "weapon_proficiencies": ["简易武器", "军用武器"],
+  "armor_proficiencies": ["轻甲", "中甲", "重甲", "盾牌"],
+  "fighting_style": "防御（穿甲时AC+1）",
+  "second_wind": "附赠动作恢复1d10+1生命值，1次/短休",
+  "attacks": [
+    {"name": "阔剑", "damage": "1d8+2", "type": "挥砍", "range": "近战"},
+    {"name": "匕首", "damage": "1d4+2", "type": "穿刺", "range": "近战/投掷"}
+  ],
+  "racial_traits": ["额外语言1种", "多才多艺（起源专长）"],
+  "class_features": ["战斗风格：防御", "再振雄风（1次/短休）"],
+  "inventory": ["鳞甲", "盾牌", "阔剑", "匕首×2", "旅行者背包", "骰子套装", "金币：10gp"],
+  "backstory": "来自北方科瓦利斯边境的苦寒之地，曾是边防军斥候。五年前驻守的哨所遭到有组织的不死生物袭击，整支小队只有他幸存。此后独自在荒野游荡，靠狩猎和护卫为生。在松林中追猎时遭遇浓雾，失去记忆后醒来在这间酒馆中。",
+  "personality": {
+    "traits": "沉默寡言，习惯用行动代替言语，对不死生物有深深的敌意",
+    "ideals": "责任——我欠战友们一个交代，必须找出那场袭击的真相",
+    "bonds": "死去的战友们是我永远的伤痛",
+    "flaws": "过度自责，有时会做出鲁莽的决定"
+  }
+}

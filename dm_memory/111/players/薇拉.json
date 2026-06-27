@@ -1,0 +1,60 @@
+{
+  "name": "薇拉",
+  "race": "人类",
+  "class": "牧师",
+  "subclass": "光明领域",
+  "level": 1,
+  "background": "侍僧",
+  "alignment": "守序善良",
+  "hp": 10,
+  "max_hp": 10,
+  "temp_hp": 0,
+  "ac": 14,
+  "speed": 30,
+  "initiative": 0,
+  "proficiency_bonus": 2,
+  "ability_scores": {
+    "strength": 12,
+    "dexterity": 10,
+    "constitution": 14,
+    "intelligence": 13,
+    "wisdom": 15,
+    "charisma": 8
+  },
+  "saving_throws": {
+    "wisdom": 4,
+    "charisma": 1
+  },
+  "skills": {
+    "洞察": 4,
+    "宗教": 3,
+    "医药": 2
+  },
+  "tool_proficiencies": [],
+  "weapon_proficiencies": ["简易武器"],
+  "armor_proficiencies": ["轻甲", "中甲", "盾牌"],
+  "spellcasting": {
+    "ability": "wisdom",
+    "spell_save_dc": 12,
+    "spell_attack_modifier": 4,
+    "spell_slots": {"1": 2},
+    "cantrips": ["光亮术", "圣火术"],
+    "known_spells_1st_level": ["治疗创伤", "守护之盾", "灼热金属", "光辉灼烧"],
+    "domain_spells_1st_level": ["光亮术", "燃烧之手"]
+  },
+  "attacks": [
+    {"name": "硬头锤", "damage": "1d6+1", "type": "钝击", "range": "近战"},
+    {"name": "圣徽（洛山达）", "damage": "1d6+1", "type": "钝击", "range": "近战"}
+  ],
+  "racial_traits": ["额外语言1种", "多才多艺（起源专长）"],
+  "class_features": ["光辉之焰（接触火焰，1d8光辉伤害）", "领域法术：光亮术、燃烧之手"],
+  "deity": "洛山达（晨曦之主）",
+  "inventory": ["鳞甲", "盾牌", "硬头锤", "圣徽（洛山达）", "圣典", "治疗工具包", "旅行者背包", "金币：10gp"],
+  "backstory": "在一座修道院中研习经典，负责教导年轻的见习修士。日常是祈祷、研读，偶尔为附近的村民主持仪式或治疗伤病。那晚在藏书室翻阅一本关于'被遗忘之地'的古老典籍，字迹发光后失去记忆，醒来时已在这间陌生酒馆中。",
+  "personality": {
+    "traits": "沉稳坚定，信仰虔诚，对知识有强烈的渴求",
+    "ideals": "信仰——洛山达的光芒将照亮最黑暗的角落",
+    "bonds": "修道院的见习修士们是我的责任，我必须回去",
+    "flaws": "有时过于执着于教义，不够灵活变通"
+  }
+}

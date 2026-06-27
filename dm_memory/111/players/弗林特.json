@@ -1,0 +1,53 @@
+{
+  "name": "弗林特",
+  "race": "矮人",
+  "class": "战士",
+  "subclass": "无",
+  "level": 1,
+  "background": "工匠",
+  "alignment": "守序善良",
+  "hp": 13,
+  "max_hp": 13,
+  "temp_hp": 0,
+  "ac": 18,
+  "speed": 25,
+  "initiative": 0,
+  "proficiency_bonus": 2,
+  "ability_scores": {
+    "strength": 16,
+    "dexterity": 10,
+    "constitution": 16,
+    "intelligence": 12,
+    "wisdom": 13,
+    "charisma": 8
+  },
+  "saving_throws": {
+    "strength": 5,
+    "constitution": 5
+  },
+  "skills": {
+    "运动": 5,
+    "威吓": 1,
+    "奥术": 1,
+    "求生": 3
+  },
+  "tool_proficiencies": ["铁匠工具", "木匠工具", "石匠工具"],
+  "weapon_proficiencies": ["简易武器", "军用武器"],
+  "armor_proficiencies": ["轻甲", "中甲", "重甲", "盾牌"],
+  "fighting_style": "防御（穿甲时AC+1）",
+  "second_wind": "附赠动作恢复1d10+1生命值，1次/短休",
+  "attacks": [
+    {"name": "战锤", "damage": "1d8+3", "type": "钝击", "range": "近战"},
+    {"name": "手斧", "damage": "1d6+3", "type": "挥砍", "range": "近战/投掷（20/60尺）"}
+  ],
+  "racial_traits": ["黑暗视觉60尺", "矮人坚韧（毒素伤害抗性）", "石工知识（石头相关检定优势）", "工具熟练：铁匠工具"],
+  "class_features": ["战斗风格：防御", "再振雄风（1次/短休）"],
+  "inventory": ["链甲", "盾牌", "战锤", "手斧×2", "工匠背包", "铁匠工具", "矿镐", "金币：12gp"],
+  "backstory": "来自丹瑟兰德矿坑的锻造匠，在地下三百尺的炉火和黑暗中打了一辈子铁。锻造过剑刃、盾铆、矿镐，也修过蒸汽管道和机械装置。在锻造一把长剑时矿坑塌方，以为自己必死无疑，但醒来时发现自己完好无损地出现在这间酒馆中。",
+  "personality": {
+    "traits": "直率坦诚，对工艺有近乎偏执的追求，喜欢用双手解决问题",
+    "ideals": "工艺——一件好作品胜过千言万语",
+    "bonds": "矿坑里的工友们是我最大的牵挂，我必须回去",
+    "flaws": "有时过于固执己见，听不进别人的建议"
+  }
+}

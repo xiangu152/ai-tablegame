@@ -1,0 +1,57 @@
+{
+  "name": "凯恩",
+  "race": "人类",
+  "class": "法师",
+  "subclass": "无（专攻预言学派和防护学派）",
+  "level": 1,
+  "background": "智者",
+  "alignment": "守序中立",
+  "hp": 7,
+  "max_hp": 7,
+  "temp_hp": 0,
+  "ac": 11,
+  "speed": 30,
+  "initiative": 1,
+  "proficiency_bonus": 2,
+  "ability_scores": {
+    "strength": 8,
+    "dexterity": 12,
+    "constitution": 13,
+    "intelligence": 15,
+    "wisdom": 14,
+    "charisma": 10
+  },
+  "saving_throws": {
+    "intelligence": 4,
+    "wisdom": 4
+  },
+  "skills": {
+    "奥术": 4,
+    "历史": 4,
+    "调查": 4
+  },
+  "tool_proficiencies": ["卷轴"],
+  "weapon_proficiencies": ["匕首", "飞镖", "投石索", "木棒"],
+  "armor_proficiencies": [],
+  "spellcasting": {
+    "ability": "intelligence",
+    "spell_save_dc": 12,
+    "spell_attack_modifier": 4,
+    "spell_slots": {"1": 2},
+    "cantrips": ["侦测魔法", "法师之手", "冷冻射线"],
+    "known_spells_1st_level": ["护盾术", "侦测魔法", "魔法飞弹", "燃烧之手", "魔法飞弹", "变化学派"]
+  },
+  "attacks": [
+    {"name": "匕首", "damage": "1d4-1", "type": "穿刺", "range": "近战/投掷"}
+  ],
+  "racial_traits": ["额外语言1种", "多才多艺（起源专长）"],
+  "class_features": ["法术书（包含所有已知法术）", "奥术恢复（1次/长休）"],
+  "inventory": ["法术书", "卷轴筒", "奥术材料袋", "匕首", "学者背包", "墨水瓶", "鹅毛笔", "金币：10gp"],
+  "backstory": "来自南方密斯特拉城，在法师学院研习七年，专攻预言学派和防护学派。完成毕业论文时校准感知法阵，法阵亮起刺眼白光后失去记忆，醒来在这间酒馆中。法术书和大部分材料都在身边。",
+  "personality": {
+    "traits": "充满好奇心，喜欢用学术思维分析问题，有时过于理性",
+    "ideals": "知识——真理是理解世界的钥匙，无论它多么令人不安",
+    "bonds": "导师和学院是我生命中最重要的地方，我必须回去完成学业",
+    "flaws": "过度自信于自己的智力，有时会忽视直觉和情感的价值"
+  }
+}

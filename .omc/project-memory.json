@@ -1,11 +1,34 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1782223151733,
+  "lastScanned": 1782539246819,
   "projectRoot": "/Users/xiangu/Codes/agent/ai-tablegame",
   "techStack": {
-    "languages": [],
-    "frameworks": [],
-    "packageManager": null,
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "requirements.txt"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "playwright",
+        "version": "1.61.1",
+        "category": "testing"
+      }
+    ],
+    "packageManager": "npm",
     "runtime": null
   },
   "build": {
@@ -28,12 +51,95 @@
     "gitBranches": null
   },
   "customNotes": [],
-  "directoryMap": {},
+  "directoryMap": {
+    "agent-scope-learn": {
+      "path": "agent-scope-learn",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1782539246807,
+      "keyFiles": []
+    },
+    "agent_roles": {
+      "path": "agent_roles",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1782539246807,
+      "keyFiles": [
+        "DM.md",
+        "PLAYER.md"
+      ]
+    },
+    "dm_agent": {
+      "path": "dm_agent",
+      "purpose": null,
+      "fileCount": 9,
+      "lastAccessed": 1782539246809,
+      "keyFiles": [
+        "__init__.py",
+        "checkpoint.py",
+        "config_loader.py",
+        "dm.py",
+        "knowledge_index.py"
+      ]
+    },
+    "dm_memory": {
+      "path": "dm_memory",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1782539246809,
+      "keyFiles": []
+    },
+    "dnd_data": {
+      "path": "dnd_data",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1782539246809,
+      "keyFiles": []
+    },
+    "dnd_output": {
+      "path": "dnd_output",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1782539246809,
+      "keyFiles": []
+    },
+    "game_engine": {
+      "path": "game_engine",
+      "purpose": null,
+      "fileCount": 10,
+      "lastAccessed": 1782539246809,
+      "keyFiles": [
+        "__init__.py",
+        "agent_runner.py",
+        "app.py",
+        "chat_renderer.py",
+        "chat_room.py"
+      ]
+    },
+    "pl_memory": {
+      "path": "pl_memory",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1782539246809,
+      "keyFiles": []
+    },
+    "game_engine/middleware": {
+      "path": "game_engine/middleware",
+      "purpose": "Middleware",
+      "fileCount": 7,
+      "lastAccessed": 1782539246810,
+      "keyFiles": [
+        "__init__.py",
+        "chat_context.py",
+        "context_compressor.py"
+      ]
+    }
+  },
   "hotPaths": [
     {
       "path": "game_engine/web_ui.py",
-      "accessCount": 82,
-      "lastAccessed": 1782289234361,
+      "accessCount": 125,
+      "lastAccessed": 1782344941016,
       "type": "file"
     },
     {
@@ -43,15 +149,15 @@
       "type": "file"
     },
     {
-      "path": "game_engine/chat_room.py",
-      "accessCount": 26,
-      "lastAccessed": 1782288654814,
+      "path": "game_engine/game_session.py",
+      "accessCount": 27,
+      "lastAccessed": 1782306656094,
       "type": "file"
     },
     {
-      "path": "game_engine/game_session.py",
-      "accessCount": 25,
-      "lastAccessed": 1782269448307,
+      "path": "game_engine/chat_room.py",
+      "accessCount": 26,
+      "lastAccessed": 1782288654814,
       "type": "file"
     },
     {
@@ -62,8 +168,8 @@
     },
     {
       "path": "dm_agent/dm.py",
-      "accessCount": 19,
-      "lastAccessed": 1782236725231,
+      "accessCount": 22,
+      "lastAccessed": 1782306348073,
       "type": "file"
     },
     {
@@ -74,8 +180,8 @@
     },
     {
       "path": "game_engine/__init__.py",
-      "accessCount": 16,
-      "lastAccessed": 1782273730851,
+      "accessCount": 17,
+      "lastAccessed": 1782306227178,
       "type": "file"
     },
     {
@@ -91,15 +197,21 @@
       "type": "file"
     },
     {
+      "path": "dm_agent/__init__.py",
+      "accessCount": 11,
+      "lastAccessed": 1782306335829,
+      "type": "file"
+    },
+    {
       "path": "dm_agent/memory_generator.py",
       "accessCount": 9,
       "lastAccessed": 1782236633885,
       "type": "file"
     },
     {
-      "path": "dm_agent/__init__.py",
+      "path": "game_engine/player_card.py",
       "accessCount": 9,
-      "lastAccessed": 1782236734913,
+      "lastAccessed": 1782312249856,
       "type": "file"
     },
     {
@@ -109,9 +221,9 @@
       "type": "file"
     },
     {
-      "path": "game_engine/player_card.py",
+      "path": "run_dm.py",
       "accessCount": 8,
-      "lastAccessed": 1782276848252,
+      "lastAccessed": 1782306652020,
       "type": "file"
     },
     {
@@ -145,12 +257,6 @@
       "type": "file"
     },
     {
-      "path": "run_dm.py",
-      "accessCount": 6,
-      "lastAccessed": 1782236729770,
-      "type": "file"
-    },
-    {
       "path": "config.yaml",
       "accessCount": 6,
       "lastAccessed": 1782236730549,
@@ -169,6 +275,12 @@
       "type": "file"
     },
     {
+      "path": "run_player.py",
+      "accessCount": 6,
+      "lastAccessed": 1782306687432,
+      "type": "file"
+    },
+    {
       "path": "dm_agent/config_loader.py",
       "accessCount": 5,
       "lastAccessed": 1782236735209,
@@ -184,12 +296,6 @@
       "path": "dm_memory/barovia/adventure_text.json",
       "accessCount": 5,
       "lastAccessed": 1782238176998,
-      "type": "file"
-    },
-    {
-      "path": "run_player.py",
-      "accessCount": 5,
-      "lastAccessed": 1782239647466,
       "type": "file"
     },
     {
